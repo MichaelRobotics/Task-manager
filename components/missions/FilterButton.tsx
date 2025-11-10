@@ -1,10 +1,12 @@
 'use client'
 
+import type { MissionStatus } from '@/types/missions';
+
 interface FilterButtonProps {
   label: string;
-  filterName: string;
-  currentFilter: string;
-  setFilter: (filter: string) => void;
+  filterName: MissionStatus;
+  currentFilter: MissionStatus;
+  setFilter: (filter: MissionStatus) => void;
 }
 
 export function FilterButton({ label, filterName, currentFilter, setFilter }: FilterButtonProps) {

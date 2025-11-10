@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import type { Mission, MissionStatus } from '@/types/missions';
-import { initialMissions, ROBOT_NAMES, generateId, defaultPanelConfig } from '@/lib/mockData';
-import { savePanel, getPanelByUserId, deletePanel } from '@/lib/panelStorage';
+import { initialMissions, ROBOT_NAMES, generateId } from '@/lib/mockData';
+import { savePanel, getPanelByUserId, deletePanel, getAllPanels } from '@/lib/panelStorage';
 import { getAllMissions, saveMission, saveMissions, deleteMission, getMissionsForPanel, clearAllMissions, type PanelMission } from '@/lib/missionStorage';
 import { isAdminLoggedIn } from '@/lib/adminSession';
 import { Header } from './Header';
@@ -11,20 +11,18 @@ import { MissionCard } from './MissionCard';
 import { AddMissionModal } from './AddMissionModal';
 import { AdminPasswordModal } from './AdminPasswordModal';
 import { AdminActionsModal } from './AdminActionsModal';
-import { CreatePanelModal } from './CreatePanelModal';
 import { ChangePanelModal } from './ChangePanelModal';
 import { EditPanelModal } from './EditPanelModal';
 
 export function MissionsDashboard() {
   const [missions, setMissions] = useState<PanelMission[]>([]);
   const [filter, setFilter] = useState<MissionStatus>('Pending');
-  const [userId, setUserId] = useState<string | null>(defaultPanelConfig.userId);
-  const [panelSendTo, setPanelSendTo] = useState<string[]>(defaultPanelConfig.sendToLocations);
-  const [panelReceiveFrom, setPanelReceiveFrom] = useState<string[]>(defaultPanelConfig.receiveFromLocations);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [panelSendTo, setPanelSendTo] = useState<string[]>([]);
+  const [panelReceiveFrom, setPanelReceiveFrom] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isAdminActionsModalOpen, setIsAdminActionsModalOpen] = useState(false);
-  const [isCreatePanelModalOpen, setIsCreatePanelModalOpen] = useState(false);
   const [isChangePanelModalOpen, setIsChangePanelModalOpen] = useState(false);
   const [isEditPanelModalOpen, setIsEditPanelModalOpen] = useState(false);
 
@@ -61,20 +59,16 @@ export function MissionsDashboard() {
         );
         setMissions(panelMissions);
       } else {
-        // Save default panel to storage
-        const defaultSendTo = defaultPanelConfig.sendToLocations;
-        const defaultReceiveFrom = defaultPanelConfig.receiveFromLocations;
-        savePanel({
-          userId,
-          sendToLocations: defaultSendTo,
-          receiveFromLocations: defaultReceiveFrom,
-        });
-        setPanelSendTo(defaultSendTo);
-        setPanelReceiveFrom(defaultReceiveFrom);
-        // Filter missions for default panel
-        const panelMissions = getMissionsForPanel(userId, defaultSendTo, defaultReceiveFrom);
-        setMissions(panelMissions);
+        // Panel doesn't exist - clear state
+        setPanelSendTo([]);
+        setPanelReceiveFrom([]);
+        setMissions([]);
       }
+    } else {
+      // No userId selected - clear state
+      setPanelSendTo([]);
+      setPanelReceiveFrom([]);
+      setMissions([]);
     }
   }, [userId]);
 
@@ -108,11 +102,38 @@ export function MissionsDashboard() {
   };
 
   const handleDeletePanel = () => {
-    if (userId) {
-      deletePanel(userId);
+    if (!userId) return;
+    
+    // Delete the current panel
+    deletePanel(userId);
+    
+    // Get all remaining panels
+    const allPanels = getAllPanels();
+    
+    if (allPanels.length > 0) {
+      // Select the first available panel and switch to its view
+      const nextPanel = allPanels[0];
+      setUserId(nextPanel.userId);
+      setPanelSendTo(nextPanel.sendToLocations);
+      setPanelReceiveFrom(nextPanel.receiveFromLocations);
+      setFilter('Pending');
+      // Filter missions for the selected panel
+      const panelMissions = getMissionsForPanel(
+        nextPanel.userId,
+        nextPanel.sendToLocations,
+        nextPanel.receiveFromLocations
+      );
+      setMissions(panelMissions);
+      // Close the admin actions modal to show the panel view
+      setIsAdminActionsModalOpen(false);
+    } else {
+      // No panels left - clear state and show default view with "Create Panel" button
+      setUserId(null);
+      setPanelSendTo([]);
+      setPanelReceiveFrom([]);
+      setMissions([]);
+      setIsAdminActionsModalOpen(false);
     }
-    setUserId(null);
-    setIsAdminActionsModalOpen(false);
   };
 
   // Edit Panel Flow
@@ -121,12 +142,13 @@ export function MissionsDashboard() {
     setIsEditPanelModalOpen(true);
   };
 
-  const handleEditPanel = (sendTo: string[], receiveFrom: string[]) => {
+  const handleEditPanel = (selectedAreas: string[], sendTo: string[], receiveFrom: string[]) => {
     if (!userId) return;
 
     // Update panel in storage
     savePanel({
       userId,
+      selectedAreas,
       sendToLocations: sendTo,
       receiveFromLocations: receiveFrom,
     });
@@ -160,13 +182,24 @@ export function MissionsDashboard() {
 
   // Create Panel Flow
   const handleOpenCreatePanelModal = () => {
-    setIsCreatePanelModalOpen(true);
+    // Close any other modals that might be open
+    setIsEditPanelModalOpen(false);
+    setIsAdminActionsModalOpen(false);
+    setIsAdminModalOpen(false);
+    setIsChangePanelModalOpen(false);
+    // Temporarily clear userId to ensure create mode
+    // Store the current userId to restore it if user cancels
+    const previousUserId = userId;
+    setUserId(null);
+    // Open Edit Panel modal in create mode
+    setIsEditPanelModalOpen(true);
   };
 
-  const handlePanelCreation = (newUserId: string, sendTo: string[], receiveFrom: string[]) => {
+  const handlePanelCreation = (newUserId: string, selectedAreas: string[], sendTo: string[], receiveFrom: string[]) => {
     // Save panel to storage
     savePanel({
       userId: newUserId,
+      selectedAreas,
       sendToLocations: sendTo,
       receiveFromLocations: receiveFrom,
     });
@@ -178,7 +211,7 @@ export function MissionsDashboard() {
     // Filter missions for the new panel
     const panelMissions = getMissionsForPanel(newUserId, sendTo, receiveFrom);
     setMissions(panelMissions);
-    setIsCreatePanelModalOpen(false);
+    setIsEditPanelModalOpen(false);
   };
 
   const handleCreateMission = (missionDetails: {
@@ -186,6 +219,9 @@ export function MissionsDashboard() {
     startPoint: string | null;
     destination: string | null;
     type: 'Send' | 'Receive';
+    cargoType: string | null;
+    numberOfPieces: number | null;
+    selectedArea: string | null;
   }) => {
     if (!userId) return;
 
@@ -197,15 +233,15 @@ export function MissionsDashboard() {
       assignedToPanelId: null,
     };
 
-    // Assign location based on mission type and panel configuration
-    if (newMission.type === 'Send') {
-      // For Send missions, assign a destination from panel's "Send To" locations
-      const randomDestination = panelSendTo[Math.floor(Math.random() * panelSendTo.length)];
-      newMission.destination = `Point ${randomDestination}`;
-    } else if (newMission.type === 'Receive') {
-      // For Receive missions, assign a start point from panel's "Receive From" locations
-      const randomStartPoint = panelReceiveFrom[Math.floor(Math.random() * panelReceiveFrom.length)];
-      newMission.startPoint = `Point ${randomStartPoint}`;
+    // Assign location based on mission type and selected area
+    if (newMission.type === 'Send' && missionDetails.selectedArea) {
+      // For Send missions, selected area is the destination (from Send to Areas)
+      newMission.destination = `Point ${missionDetails.selectedArea}`;
+      // Start point will be assigned when operator clicks "Send" button (from selectedAreas in step 1)
+    } else if (newMission.type === 'Receive' && missionDetails.selectedArea) {
+      // For Receive missions, selected area is the start point (from Receive From Areas)
+      newMission.startPoint = `Point ${missionDetails.selectedArea}`;
+      // Destination will be assigned when operator clicks "Receive" button (from selectedAreas in step 1)
     }
 
     // Save mission to global storage
@@ -214,6 +250,10 @@ export function MissionsDashboard() {
     // Reload missions filtered for current panel
     const panelMissions = getMissionsForPanel(userId, panelSendTo, panelReceiveFrom);
     setMissions(panelMissions);
+    
+    // Ensure filter is set to 'Pending' to show the newly created mission
+    setFilter('Pending');
+    
     handleCloseModal();
   };
 
@@ -234,16 +274,17 @@ export function MissionsDashboard() {
         const assignedRobot = ROBOT_NAMES[Math.floor(Math.random() * ROBOT_NAMES.length)];
         const assignedStartPoint = panelReceiveFrom[Math.floor(Math.random() * panelReceiveFrom.length)];
         
-        // For Send missions, we already have destination, just need to add startPoint
-        // For Receive missions appearing as Send, destination is the original startPoint
-        const missionDestination = mission.destination || mission.startPoint;
+        // Select destination from panel's "Send To" areas (step 3 of edit modal)
+        const selectedDestination = panelSendTo.length > 0 
+          ? panelSendTo[Math.floor(Math.random() * panelSendTo.length)]
+          : null;
         
         const updated = {
           ...mission,
           status: 'In queue' as MissionStatus,
           robotName: assignedRobot,
           startPoint: `Point ${assignedStartPoint}`,
-          destination: missionDestination, // Keep existing destination or use startPoint as destination
+          destination: selectedDestination ? `Point ${selectedDestination}` : mission.destination || mission.startPoint,
           assignedToPanelId: userId,
         };
         saveMission(updated);
@@ -343,6 +384,13 @@ export function MissionsDashboard() {
     return mission.status === filter;
   });
 
+  // Helper to get display text for status
+  const getStatusDisplayText = (status: MissionStatus) => {
+    if (status === 'Pending') return 'Ordered';
+    if (status === 'In queue') return 'Departure';
+    return status;
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 font-inter pb-20 md:pb-0">
       {userId ? (
@@ -356,7 +404,7 @@ export function MissionsDashboard() {
           />
 
           <main className="container mx-auto p-4 md:p-6">
-            <h1 className="text-2xl font-bold text-gray-800 mb-4">{filter} Missions</h1>
+            <h1 className="text-2xl font-bold text-gray-800 mb-4">{getStatusDisplayText(filter)} Missions</h1>
 
             {filteredMissions.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -407,6 +455,7 @@ export function MissionsDashboard() {
         onCreateMission={handleCreateMission}
         sendToLocations={panelSendTo}
         receiveFromLocations={panelReceiveFrom}
+        selectedAreas={[...new Set([...panelSendTo, ...panelReceiveFrom])]}
       />
 
       <AdminPasswordModal
@@ -431,19 +480,15 @@ export function MissionsDashboard() {
         onOpenCreatePanel={handleOpenCreatePanelModal}
       />
 
-      <CreatePanelModal
-        isOpen={isCreatePanelModalOpen}
-        onClose={() => setIsCreatePanelModalOpen(false)}
-        onCreatePanel={handlePanelCreation}
-      />
-
       <EditPanelModal
         isOpen={isEditPanelModalOpen}
         onClose={() => setIsEditPanelModalOpen(false)}
         onEditPanel={handleEditPanel}
+        onCreatePanel={userId ? undefined : handlePanelCreation}
         currentUserId={userId || ''}
         currentSendTo={panelSendTo}
         currentReceiveFrom={panelReceiveFrom}
+        isCreateMode={!userId}
       />
     </div>
   );

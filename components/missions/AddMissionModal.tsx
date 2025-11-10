@@ -1,6 +1,50 @@
 'use client'
 
+import { useState, useLayoutEffect } from 'react';
 import type { MissionType } from '@/types/missions';
+import { ALL_LOCATIONS } from '@/lib/mockData';
+
+// Get global cargo types from localStorage
+const GLOBAL_LABELS_STORAGE_KEY = 'global_labels';
+const LOCATION_LABELS_STORAGE_KEY = 'location_labels';
+const AREA_NAMES_STORAGE_KEY = 'area_custom_names';
+
+const getGlobalLabels = (): string[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const stored = localStorage.getItem(GLOBAL_LABELS_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+type LabelAssignmentType = 'send' | 'receive' | 'both';
+
+interface LabelAssignment {
+  label: string;
+  type: LabelAssignmentType;
+}
+
+const getAllLocationLabels = (): Record<string, LabelAssignment[]> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const stored = localStorage.getItem(LOCATION_LABELS_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+};
+
+const getLocationNames = (): Record<string, string> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const stored = localStorage.getItem(AREA_NAMES_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+};
 
 interface AddMissionModalProps {
   isOpen: boolean;
@@ -10,9 +54,13 @@ interface AddMissionModalProps {
     startPoint: string | null;
     destination: string | null;
     type: MissionType;
+    cargoType: string | null;
+    numberOfPieces: number | null;
+    selectedArea: string | null;
   }) => void;
   sendToLocations: string[];
   receiveFromLocations: string[];
+  selectedAreas: string[]; // Areas selected in step 1 of edit modal
 }
 
 export function AddMissionModal({
@@ -21,17 +69,113 @@ export function AddMissionModal({
   onCreateMission,
   sendToLocations,
   receiveFromLocations,
+  selectedAreas,
 }: AddMissionModalProps) {
+  const [selectedType, setSelectedType] = useState<MissionType | null>(null);
+  const [cargoType, setCargoType] = useState<string>('');
+  const [numberOfPieces, setNumberOfPieces] = useState<string>('');
+  const [selectedArea, setSelectedArea] = useState<string>('');
+  const [availableCargoTypes, setAvailableCargoTypes] = useState<string[]>([]);
+  const [locationLabelAssignments, setLocationLabelAssignments] = useState<Record<string, LabelAssignment[]>>({});
+  const [locationNames, setLocationNames] = useState<Record<string, string>>({});
+
+  useLayoutEffect(() => {
+    if (isOpen) {
+      // Load data first, then reset form state in the same render cycle
+      // useLayoutEffect runs synchronously before browser paint, preventing flicker
+      const labels = getGlobalLabels();
+      const assignments = getAllLocationLabels();
+      const names = getLocationNames();
+      
+      // Batch all state updates together
+      setAvailableCargoTypes(labels);
+      setLocationLabelAssignments(assignments);
+      setLocationNames(names);
+      setSelectedType(null);
+      setCargoType('');
+      setNumberOfPieces('');
+      setSelectedArea('');
+    }
+  }, [isOpen, selectedAreas]);
+
   if (!isOpen) {
     return null;
   }
 
   const handleSelectType = (type: MissionType) => {
+    setSelectedType(type);
+  };
+
+  // Check if Origin areas can send (have cargo types with 'send' or 'both')
+  const canOriginAreasSend = (): boolean => {
+    if (selectedAreas.length === 0) return false;
+    
+    return selectedAreas.some(area => {
+      const assignments = locationLabelAssignments[area] || [];
+      return assignments.some(a => a.type === 'send' || a.type === 'both');
+    });
+  };
+
+  // Check if Origin areas can receive (have cargo types with 'receive' or 'both')
+  const canOriginAreasReceive = (): boolean => {
+    if (selectedAreas.length === 0) return false;
+    
+    return selectedAreas.some(area => {
+      const assignments = locationLabelAssignments[area] || [];
+      return assignments.some(a => a.type === 'receive' || a.type === 'both');
+    });
+  };
+
+  // Get available areas based on selected cargo type and mission type
+  const getAvailableAreas = (): string[] => {
+    // For Send: show ONLY areas from step 2 (Send to Areas)
+    // For Receive: show ONLY areas from step 3 (Receive From Areas)
+    const baseAreas = selectedType === 'Send' ? sendToLocations : receiveFromLocations;
+    
+    // If no areas configured in the respective step, return empty
+    if (baseAreas.length === 0) return [];
+    
+    // If no cargo type is selected yet, return all base areas from the respective step
+    if (!cargoType) {
+      return baseAreas;
+    }
+    
+    // Filter areas based on cargo type and mission type
+    // Only show areas that are in the baseAreas (step 2 for Send, step 3 for Receive)
+    return baseAreas.filter(area => {
+      const assignments = locationLabelAssignments[area] || [];
+      
+      // If area has no cargo type assignments, include it (backward compatibility)
+      if (assignments.length === 0) {
+        return true;
+      }
+      
+      if (selectedType === 'Send') {
+        // For Send: show areas from step 2 that can receive this cargo type
+        return assignments.some(a => 
+          a.label === cargoType && (a.type === 'receive' || a.type === 'both')
+        );
+      } else if (selectedType === 'Receive') {
+        // For Receive: show areas from step 3 that can send this cargo type
+        return assignments.some(a => 
+          a.label === cargoType && (a.type === 'send' || a.type === 'both')
+        );
+      }
+      return false;
+    });
+  };
+
+  const handleCreateMission = () => {
+    if (!selectedType || !cargoType || !selectedArea) return;
+    
     onCreateMission({
       robotName: null,
       startPoint: null,
       destination: null,
-      type,
+      type: selectedType,
+      cargoType: cargoType,
+      numberOfPieces: numberOfPieces.trim() ? parseInt(numberOfPieces.trim(), 10) : null,
+      selectedArea: selectedArea,
     });
     onClose();
   };
@@ -49,18 +193,162 @@ export function AddMissionModal({
         </div>
 
         <div className="flex flex-col gap-4">
-          <button
-            onClick={() => handleSelectType('Send')}
-            className="w-full px-6 py-4 bg-green-600 text-white font-semibold text-lg rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 transition-colors"
-          >
-            SEND
-          </button>
-          <button
-            onClick={() => handleSelectType('Receive')}
-            className="w-full px-6 py-4 bg-blue-600 text-white font-semibold text-lg rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 transition-colors"
-          >
-            RECEIVE
-          </button>
+          {!selectedType ? (
+            <>
+              {/* If no areas in step 1, show configuration message */}
+              {selectedAreas.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-600 mb-4">No areas configured in panel settings.</p>
+                  <p className="text-sm text-gray-500">Configure Panel Settings → Edit Panel</p>
+                </div>
+              ) : (
+                <>
+                  {/* If areas in step 1 but no send/receive configured, show message */}
+                  {sendToLocations.length === 0 && receiveFromLocations.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-600 mb-2">Areas are configured, but no Send or Receive destinations are set.</p>
+                      <p className="text-sm text-gray-500">Please configure at least "Send to Areas" or "Receive From Areas" in panel settings.</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-4">
+                      {/* Show SEND button only if:
+                          1. sendToLocations is configured (step 2)
+                          2. Origin areas can send (have cargo types with 'send' or 'both') */}
+                      {sendToLocations.length > 0 && canOriginAreasSend() && (
+                        <button
+                          onClick={() => handleSelectType('Send')}
+                          className="w-full px-6 py-4 bg-green-600 text-white font-semibold text-lg rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 transition-colors"
+                        >
+                          SEND
+                        </button>
+                      )}
+                      {/* Show RECEIVE button only if:
+                          1. receiveFromLocations is configured (step 3)
+                          2. Origin areas can receive (have cargo types with 'receive' or 'both') */}
+                      {receiveFromLocations.length > 0 && canOriginAreasReceive() && (
+                        <button
+                          onClick={() => handleSelectType('Receive')}
+                          className="w-full px-6 py-4 bg-blue-600 text-white font-semibold text-lg rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 transition-colors"
+                        >
+                          RECEIVE
+                        </button>
+                      )}
+                      {/* Show message if no buttons are available */}
+                      {(!canOriginAreasSend() || sendToLocations.length === 0) && 
+                       (!canOriginAreasReceive() || receiveFromLocations.length === 0) && (
+                        <div className="text-center py-4">
+                          <p className="text-gray-600 text-sm">
+                            No send or receive options available. Configure cargo types in Origin areas.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Cargo Type Selection - Show after selecting Send/Receive */}
+              {selectedType && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Cargo Type
+                  </label>
+                  {availableCargoTypes.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {availableCargoTypes.map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => {
+                            setCargoType(type);
+                            setSelectedArea(''); // Reset area selection when cargo type changes
+                          }}
+                          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                            cargoType === type
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">No cargo types available. Please add cargo types in panel settings.</p>
+                  )}
+                </div>
+              )}
+
+              {/* Area Selection - Show after selecting Cargo Type */}
+              {selectedType && cargoType && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {selectedType === 'Send' ? 'Select Area to Send To' : 'Select Area to Receive From'}
+                  </label>
+                  {getAvailableAreas().length > 0 ? (
+                    <div className="grid grid-cols-4 gap-2">
+                      {getAvailableAreas().map((area) => (
+                        <button
+                          key={area}
+                          type="button"
+                          onClick={() => setSelectedArea(area)}
+                          className={`px-3 py-2 border rounded-md text-sm font-semibold transition-colors ${
+                            selectedArea === area
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                          }`}
+                        >
+                          {locationNames[area] || area}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500">
+                      {selectedType === 'Send' 
+                        ? (sendToLocations.length === 0 
+                            ? 'No "Send to Areas" configured. Please configure in panel settings.'
+                            : 'No areas available for this cargo type. Please configure areas in panel settings.')
+                        : (receiveFromLocations.length === 0 
+                            ? 'No "Receive From Areas" configured. Please configure in panel settings.'
+                            : 'No areas available for this cargo type. Please configure areas in panel settings.')}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Number of Pieces
+                </label>
+                <input
+                  type="number"
+                  value={numberOfPieces}
+                  onChange={(e) => setNumberOfPieces(e.target.value)}
+                  placeholder="Enter number of pieces..."
+                  min="1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <button
+                onClick={handleCreateMission}
+                disabled={!selectedType || !cargoType || !selectedArea}
+                className={`w-full px-6 py-4 text-white font-semibold text-lg rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-opacity-75 transition-colors ${
+                  selectedType === 'Send'
+                    ? cargoType && selectedArea
+                      ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
+                      : 'bg-green-400 cursor-not-allowed'
+                    : cargoType && selectedArea
+                      ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
+                      : 'bg-blue-400 cursor-not-allowed'
+                }`}
+              >
+                Create {selectedType} Mission
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

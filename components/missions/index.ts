@@ -7,7 +7,6 @@ export { MobileFilterButton } from './MobileFilterButton';
 export { AddMissionModal } from './AddMissionModal';
 export { AdminPasswordModal } from './AdminPasswordModal';
 export { AdminActionsModal } from './AdminActionsModal';
-export { CreatePanelModal } from './CreatePanelModal';
 export { ChangePanelModal } from './ChangePanelModal';
 export { EditPanelModal } from './EditPanelModal';
 

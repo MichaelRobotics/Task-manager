@@ -1,5 +1,5 @@
 // Mission storage utility for managing missions across all panels
-import type { Mission } from '@/types/missions';
+import type { Mission, MissionType } from '@/types/missions';
 
 const STORAGE_KEY = 'all_missions';
 
@@ -136,33 +136,35 @@ export function getMissionsForPanel(
         }
       }
       // For Pending missions, use location-based filtering
-      else if (mission.type === 'Send' && mission.destination) {
-        // Original Send mission
-        const destinationPoint = mission.destination.replace('Point ', '');
-        
-        // If this panel created the mission, show it as Send
-        if (isCreatedByThisPanel && panelSendTo.includes(destinationPoint)) {
-          displayType = 'Send';
-          shouldShow = true;
-        }
-        // If another panel created it and this panel can Receive From that destination, show as Receive
-        else if (!isCreatedByThisPanel && !isMissionAssigned && panelReceiveFrom.includes(destinationPoint)) {
-          displayType = 'Receive';
-          shouldShow = true;
-        }
-      } else if (mission.type === 'Receive' && mission.startPoint) {
-        // Original Receive mission created in another panel
-        const startPoint = mission.startPoint.replace('Point ', '');
-        
-        // If this panel created the mission, show it as Receive
-        if (isCreatedByThisPanel && panelReceiveFrom.includes(startPoint)) {
-          displayType = 'Receive';
-          shouldShow = true;
-        }
-        // If another panel created it and this panel can Send To that start point, show as Send
-        else if (!isCreatedByThisPanel && !isMissionAssigned && panelSendTo.includes(startPoint)) {
-          displayType = 'Send';
-          shouldShow = true;
+      else if (mission.status === 'Pending') {
+        if (mission.type === 'Send' && mission.destination) {
+          // Original Send mission
+          const destinationPoint = mission.destination.replace('Point ', '');
+          
+          // If this panel created the mission, always show it as Send
+          if (isCreatedByThisPanel) {
+            displayType = 'Send';
+            shouldShow = true;
+          }
+          // If another panel created it and this panel can Receive From that destination, show as Receive
+          else if (!isMissionAssigned && panelReceiveFrom.includes(destinationPoint)) {
+            displayType = 'Receive';
+            shouldShow = true;
+          }
+        } else if (mission.type === 'Receive' && mission.startPoint) {
+          // Original Receive mission
+          const startPoint = mission.startPoint.replace('Point ', '');
+          
+          // If this panel created the mission, always show it as Receive
+          if (isCreatedByThisPanel) {
+            displayType = 'Receive';
+            shouldShow = true;
+          }
+          // If another panel created it and this panel can Send To that start point, show as Send
+          else if (!isMissionAssigned && panelSendTo.includes(startPoint)) {
+            displayType = 'Send';
+            shouldShow = true;
+          }
         }
       }
       

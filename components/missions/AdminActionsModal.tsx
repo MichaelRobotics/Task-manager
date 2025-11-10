@@ -1,5 +1,7 @@
 'use client'
 
+import { resetLocalStorage } from '@/lib/resetStorage';
+
 interface AdminActionsModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -12,6 +14,14 @@ export function AdminActionsModal({ isOpen, onClose, onDeletePanel, onChangePane
   if (!isOpen) {
     return null;
   }
+
+  const handleResetStorage = () => {
+    if (confirm('Are you sure you want to reset all localStorage data? This will delete all panels, missions, cargo types, and custom area names. This action cannot be undone.')) {
+      resetLocalStorage();
+      // Reload the page to reflect the changes
+      window.location.reload();
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity">
@@ -42,6 +52,12 @@ export function AdminActionsModal({ isOpen, onClose, onDeletePanel, onChangePane
             className="w-full px-4 py-3 bg-red-600 text-white font-semibold rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75"
           >
             Delete Current Panel
+          </button>
+          <button
+            onClick={handleResetStorage}
+            className="w-full px-4 py-3 bg-orange-600 text-white font-semibold rounded-md shadow-sm hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-opacity-75"
+          >
+            Reset All Data
           </button>
         </div>
       </div>

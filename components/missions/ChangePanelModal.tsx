@@ -69,6 +69,9 @@ export function ChangePanelModal({
               >
                 <div className="font-semibold text-gray-800">{panel.userId}</div>
                 <div className="text-xs text-gray-500 mt-1">
+                  Origin: {(panel.selectedAreas || []).length > 0 ? panel.selectedAreas.join(', ') : 'None'}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
                   Send To: {panel.sendToLocations.join(', ')} | Receive From: {panel.receiveFromLocations.join(', ')}
                 </div>
                 {panel.userId === currentUserId && (
@@ -83,7 +86,7 @@ export function ChangePanelModal({
           onClick={handleCreateNew}
           className="w-full px-4 py-3 bg-blue-600 text-white font-semibold rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
         >
-          Add New Panel
+          Create Panel
         </button>
       </div>
     </div>

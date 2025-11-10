@@ -40,7 +40,7 @@ export function Header({
           {/* Desktop: Show all filter buttons */}
           <div className="hidden md:flex gap-2">
             <FilterButton
-              label="Pending"
+              label="Ordered"
               filterName="Pending"
               currentFilter={filter}
               setFilter={setFilter}

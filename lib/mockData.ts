@@ -24,11 +24,11 @@ export const generateId = (): number => {
 
 // Initial missions data
 export const initialMissions: Mission[] = [
-  { id: 1, robotName: 'AMR-01', startPoint: 'Point B1', destination: 'Point A1', status: 'Active', type: 'Send', createdByPanelId: null, assignedToPanelId: null },
-  { id: 2, robotName: 'AMR-02', startPoint: 'Point B2', destination: 'Point A2', status: 'Active', type: 'Receive', createdByPanelId: null, assignedToPanelId: null },
-  { id: 3, robotName: 'Fetcher-01', startPoint: 'Point B1', destination: 'Point C3', status: 'Completed', type: 'Send', createdByPanelId: null, assignedToPanelId: null },
-  { id: 4, robotName: null, startPoint: null, destination: 'Point C4', status: 'Pending', type: 'Send', createdByPanelId: null, assignedToPanelId: null },
-  { id: 5, robotName: null, startPoint: 'Point B4', destination: null, status: 'Pending', type: 'Receive', createdByPanelId: null, assignedToPanelId: null },
+  { id: 1, robotName: 'AMR-01', startPoint: 'Point B1', destination: 'Point A1', status: 'Active', type: 'Send', cargoType: null, numberOfPieces: null, createdByPanelId: null, assignedToPanelId: null },
+  { id: 2, robotName: 'AMR-02', startPoint: 'Point B2', destination: 'Point A2', status: 'Active', type: 'Receive', cargoType: null, numberOfPieces: null, createdByPanelId: null, assignedToPanelId: null },
+  { id: 3, robotName: 'Fetcher-01', startPoint: 'Point B1', destination: 'Point C3', status: 'Completed', type: 'Send', cargoType: null, numberOfPieces: null, createdByPanelId: null, assignedToPanelId: null },
+  { id: 4, robotName: null, startPoint: null, destination: 'Point C4', status: 'Pending', type: 'Send', cargoType: null, numberOfPieces: null, createdByPanelId: null, assignedToPanelId: null },
+  { id: 5, robotName: null, startPoint: 'Point B4', destination: null, status: 'Pending', type: 'Receive', cargoType: null, numberOfPieces: null, createdByPanelId: null, assignedToPanelId: null },
 ];
 
 // Default panel configuration
