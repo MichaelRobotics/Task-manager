@@ -554,7 +554,7 @@ export function EditPanelModal({
               type="button"
               onClick={handleCreateAndAddLabel}
               disabled={!newLabelInput.trim() && !selectedExistingLabel}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              className="px-5 py-3 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 active:bg-blue-800 disabled:bg-gray-300 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors touch-manipulation"
             >
               {selectedExistingLabel ? 'Add Existing Cargo Type' : 'Add Cargo Type'}
             </button>
@@ -578,7 +578,7 @@ export function EditPanelModal({
 
     return (
       <div className="mb-4">
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           {locations.map((location) => {
             const isSelected = selectedLocations.includes(location);
             return (
@@ -587,7 +587,7 @@ export function EditPanelModal({
                 key={location}
                 onClick={() => handleSelect(location)}
                 className={`
-                  px-3 py-2 border rounded-md text-sm font-semibold transition-colors
+                  px-3 py-2.5 sm:py-2 border rounded-md text-sm font-semibold transition-colors touch-manipulation active:scale-95
                   ${
                     isSelected
                       ? 'bg-blue-600 text-white border-blue-600'
@@ -632,13 +632,13 @@ export function EditPanelModal({
   const renderPage1 = () => (
     <div>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h3 className="text-lg font-semibold text-gray-800">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-800">
           Select Area that Operator will create missions from - in this panel
         </h3>
         
       </div>
 
-      <div className="grid grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 mb-6">
         {(() => {
           const areasInOtherPanels = getAreasInOtherPanels();
           return ALL_LOCATIONS.map((location) => {
@@ -654,7 +654,7 @@ export function EditPanelModal({
               {editingLocationName === location ? (
                 <div
                   className={`
-                    w-full px-4 py-6 border-2 rounded-lg text-base font-semibold transition-all relative
+                    w-full px-3 py-4 sm:px-4 sm:py-6 border-2 rounded-lg text-sm sm:text-base font-semibold transition-all relative touch-manipulation
                     ${
                       isSelected
                         ? 'bg-blue-600 text-white border-blue-600 shadow-lg scale-105'
@@ -863,9 +863,9 @@ export function EditPanelModal({
     
     return (
       <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Areas: You Send To</h3>
+        <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Areas: You Send To</h3>
         {availableLocations.length > 0 ? (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {availableLocations.map((location) => {
               const isSelected = selectedSendTo.includes(location);
               const customName = locationNames[location];
@@ -933,9 +933,9 @@ export function EditPanelModal({
     
     return (
       <div>
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Areas: You Receive From</h3>
+        <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Areas: You Receive From</h3>
         {availableLocations.length > 0 ? (
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {availableLocations.map((location) => {
               const isSelected = selectedReceiveFrom.includes(location);
               const customName = locationNames[location];
@@ -969,30 +969,34 @@ export function EditPanelModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl m-4 transform transition-all max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4 relative">
-          <h2 className="text-xl font-bold text-gray-800">{isCreateMode ? 'Create Panel' : 'Edit Panel'}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity p-2 sm:p-4">
+      <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-2xl transform transition-all max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="mb-4 relative">
+          {/* Header Row: Title and Close Button */}
+          <div className="flex justify-between items-center gap-2">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-800">{isCreateMode ? 'Create Panel' : 'Edit Panel'}</h2>
+            <button onClick={handleClose} className="text-gray-400 hover:text-gray-600 flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          {/* Panel ID Row: Below title on mobile, centered on desktop */}
           {isCreateMode ? (
-            <div className="absolute left-1/2 transform -translate-x-1/2">
+            <div className="mt-3 sm:mt-0 sm:absolute sm:left-1/2 sm:transform sm:-translate-x-1/2 sm:top-0">
               <input
                 type="text"
                 value={newPanelId}
                 onChange={(e) => setNewPanelId(e.target.value)}
                 placeholder="Enter Panel ID..."
-                className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-center"
+                className="w-full sm:w-auto px-3 py-2 sm:py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-center"
               />
             </div>
           ) : (
-            <p className="text-sm text-gray-600 absolute left-1/2 transform -translate-x-1/2">
+            <p className="text-sm text-gray-600 mt-3 sm:mt-0 sm:absolute sm:left-1/2 sm:transform sm:-translate-x-1/2 sm:top-0">
               <span className="font-semibold">Panel ID:</span> {currentUserId}
             </p>
           )}
-          <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
         </div>
 
         {renderProgressBar()}
@@ -1012,7 +1016,7 @@ export function EditPanelModal({
                 <button
                   type="button"
                   onClick={handlePrevious}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md shadow-sm hover:bg-gray-300 focus:outline-none"
+                  className="px-5 py-3 sm:px-4 sm:py-2 bg-gray-200 text-gray-700 rounded-md shadow-sm hover:bg-gray-300 active:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-colors touch-manipulation"
                 >
                   Previous
                 </button>
@@ -1027,14 +1031,14 @@ export function EditPanelModal({
                     e.stopPropagation();
                     handleNext(e);
                   }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none"
+                  className="px-5 py-3 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors touch-manipulation"
                 >
                   Next
                 </button>
               ) : (
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none"
+                  className="px-5 py-3 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors touch-manipulation"
                 >
                   {isCreateMode ? 'Create Panel' : 'Save Changes'}
                 </button>

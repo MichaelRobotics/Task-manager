@@ -29,7 +29,7 @@ export function Header({
 
   return (
     <header className="bg-white shadow-md sticky top-0 z-10">
-      <nav className="container mx-auto px-4 py-4 flex justify-between items-center">
+      <nav className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex justify-between items-center gap-2">
         {/* Left Side: Filters */}
         {/* Mobile: Single cycling button, Desktop: All buttons */}
         <div className="flex gap-2">

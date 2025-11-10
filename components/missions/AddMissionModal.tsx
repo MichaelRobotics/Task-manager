@@ -181,10 +181,10 @@ export function AddMissionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4 transform transition-all">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-gray-800">Create New Mission</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity p-2 sm:p-4">
+      <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-md transform transition-all max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4 sm:mb-6 gap-2">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800">Create New Mission</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -217,7 +217,7 @@ export function AddMissionModal({
                       {sendToLocations.length > 0 && canOriginAreasSend() && (
                         <button
                           onClick={() => handleSelectType('Send')}
-                          className="w-full px-6 py-4 bg-green-600 text-white font-semibold text-lg rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 transition-colors"
+                          className="w-full px-6 py-3 sm:py-4 bg-green-600 text-white font-semibold text-base sm:text-lg rounded-md shadow-sm hover:bg-green-700 active:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 transition-colors touch-manipulation"
                         >
                           SEND
                         </button>
@@ -228,7 +228,7 @@ export function AddMissionModal({
                       {receiveFromLocations.length > 0 && canOriginAreasReceive() && (
                         <button
                           onClick={() => handleSelectType('Receive')}
-                          className="w-full px-6 py-4 bg-blue-600 text-white font-semibold text-lg rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 transition-colors"
+                          className="w-full px-6 py-3 sm:py-4 bg-blue-600 text-white font-semibold text-base sm:text-lg rounded-md shadow-sm hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 transition-colors touch-manipulation"
                         >
                           RECEIVE
                         </button>
@@ -288,13 +288,13 @@ export function AddMissionModal({
                     {selectedType === 'Send' ? 'Select Area to Send To' : 'Select Area to Receive From'}
                   </label>
                   {getAvailableAreas().length > 0 ? (
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                       {getAvailableAreas().map((area) => (
                         <button
                           key={area}
                           type="button"
                           onClick={() => setSelectedArea(area)}
-                          className={`px-3 py-2 border rounded-md text-sm font-semibold transition-colors ${
+                          className={`px-3 py-2.5 sm:py-2 border rounded-md text-sm font-semibold transition-colors touch-manipulation active:scale-95 ${
                             selectedArea === area
                               ? 'bg-blue-600 text-white border-blue-600'
                               : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
@@ -335,13 +335,13 @@ export function AddMissionModal({
               <button
                 onClick={handleCreateMission}
                 disabled={!selectedType || !cargoType || !selectedArea}
-                className={`w-full px-6 py-4 text-white font-semibold text-lg rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-opacity-75 transition-colors ${
+                className={`w-full px-6 py-3 sm:py-4 text-white font-semibold text-base sm:text-lg rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-opacity-75 transition-colors touch-manipulation ${
                   selectedType === 'Send'
                     ? cargoType && selectedArea
-                      ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
+                      ? 'bg-green-600 hover:bg-green-700 active:bg-green-800 focus:ring-green-500'
                       : 'bg-green-400 cursor-not-allowed'
                     : cargoType && selectedArea
-                      ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
+                      ? 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 focus:ring-blue-500'
                       : 'bg-blue-400 cursor-not-allowed'
                 }`}
               >

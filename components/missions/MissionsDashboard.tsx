@@ -404,10 +404,10 @@ export function MissionsDashboard() {
           />
 
           <main className="container mx-auto p-4 md:p-6">
-            <h1 className="text-2xl font-bold text-gray-800 mb-4">{getStatusDisplayText(filter)} Missions</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 px-2 sm:px-0">{getStatusDisplayText(filter)} Missions</h1>
 
             {filteredMissions.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                 {filteredMissions.map((mission) => (
                   <MissionCard
                     key={mission.id}
@@ -442,7 +442,7 @@ export function MissionsDashboard() {
         <div className="flex items-center justify-center" style={{ height: '100vh' }}>
           <button
             onClick={handleOpenCreatePanelModal}
-            className="px-6 py-3 bg-blue-600 text-white font-semibold text-lg rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75"
+            className="px-6 py-3 sm:py-3 bg-blue-600 text-white font-semibold text-base sm:text-lg rounded-lg shadow-md hover:bg-blue-700 active:bg-blue-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-75 touch-manipulation"
           >
             Create Panel
           </button>

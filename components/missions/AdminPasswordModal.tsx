@@ -37,10 +37,10 @@ export function AdminPasswordModal({ isOpen, onClose, onAdminLogin }: AdminPassw
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity">
-      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm m-4 transform transition-all">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-800">Admin Login</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity p-2 sm:p-4">
+      <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-sm transform transition-all">
+        <div className="flex justify-between items-center mb-4 gap-2">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800">Admin Login</h2>
           <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -66,13 +66,13 @@ export function AdminPasswordModal({ isOpen, onClose, onAdminLogin }: AdminPassw
             <button
               type="button"
               onClick={handleClose}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none"
+              className="px-5 py-3 sm:px-4 sm:py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 active:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 transition-colors touch-manipulation"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 focus:outline-none"
+              className="px-5 py-3 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-md shadow-sm hover:bg-blue-700 active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors touch-manipulation"
             >
               Login
             </button>

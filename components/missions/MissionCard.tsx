@@ -93,8 +93,8 @@ export function MissionCard({
   return (
     <div className={cardClasses}>
       {/* Header: Type on left, Status on right top */}
-      <div className="flex justify-between items-start mb-3">
-        <span className="text-xl font-bold text-gray-800">{displayType}</span>
+      <div className="flex justify-between items-start mb-3 gap-2">
+        <span className="text-lg sm:text-xl font-bold text-gray-800">{displayType}</span>
         <span className={statusClasses}>
           {getStatusDisplayText(mission.status)}
         </span>
@@ -144,11 +144,11 @@ export function MissionCard({
       )}
 
       {/* Action Buttons */}
-      <div className="flex justify-end pt-2 border-t border-gray-100">
+      <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
         {mission.status === 'In queue' && (
           <button
             onClick={() => onCancelMission(mission.id)}
-            className="px-4 py-1.5 bg-red-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400 transition-colors"
+            className="px-5 py-2.5 sm:px-4 sm:py-1.5 bg-red-500 text-white text-sm sm:text-sm font-medium rounded-md shadow-sm hover:bg-red-600 active:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400 transition-colors touch-manipulation"
           >
             Cancel
           </button>
@@ -156,7 +156,7 @@ export function MissionCard({
         {mission.status === 'Pending' && isCreatedByThisPanel && (
           <button
             onClick={() => onCancelMission(mission.id)}
-            className="px-4 py-1.5 bg-red-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400 transition-colors"
+            className="px-5 py-2.5 sm:px-4 sm:py-1.5 bg-red-500 text-white text-sm sm:text-sm font-medium rounded-md shadow-sm hover:bg-red-600 active:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400 transition-colors touch-manipulation"
           >
             Cancel
           </button>
@@ -164,7 +164,7 @@ export function MissionCard({
         {mission.status === 'Pending' && !isCreatedByThisPanel && displayType === 'Send' && (
           <button
             onClick={() => onSendMission(mission.id)}
-            className="px-4 py-1.5 bg-green-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-400 transition-colors"
+            className="px-5 py-2.5 sm:px-4 sm:py-1.5 bg-green-500 text-white text-sm sm:text-sm font-medium rounded-md shadow-sm hover:bg-green-600 active:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400 transition-colors touch-manipulation"
           >
             Send
           </button>
@@ -172,7 +172,7 @@ export function MissionCard({
         {mission.status === 'Pending' && !isCreatedByThisPanel && displayType === 'Receive' && (
           <button
             onClick={() => onReceiveMission(mission.id)}
-            className="px-4 py-1.5 bg-blue-500 text-white text-sm font-medium rounded-md shadow-sm hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors"
+            className="px-5 py-2.5 sm:px-4 sm:py-1.5 bg-blue-500 text-white text-sm sm:text-sm font-medium rounded-md shadow-sm hover:bg-blue-600 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors touch-manipulation"
           >
             Receive
           </button>
