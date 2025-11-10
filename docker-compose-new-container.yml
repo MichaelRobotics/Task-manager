@@ -1,0 +1,138 @@
+# Docker Compose file for Task Manager
+# Includes database, application, and integration with main API services
+
+version: '3.8'
+
+services:
+   # PostgreSQL Database for Task Manager
+   task-manager-postgres:
+      image: postgres:16-alpine
+      container_name: task-manager-postgres
+      restart: always
+      environment:
+         POSTGRES_USER: ${DB_USER:-postgres}
+         POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+         POSTGRES_DB: ${DB_NAME:-taskmanager}
+      volumes:
+         - task-manager-postgres-data:/var/lib/postgresql/data
+      ports:
+         - "${DB_PORT:-5433}:5432"
+      networks:
+         - task-manager-network
+      healthcheck:
+         test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+         interval: 10s
+         timeout: 5s
+         retries: 5
+         start_period: 10s
+
+   # Task Manager Application
+   task-manager-app:
+      build:
+         context: .
+         dockerfile: Dockerfile
+      # Alternative: Use pre-built image from registry
+      # image: "${REGISTRY_PATH}task-manager:${TAG}"
+      container_name: task-manager-app
+      restart: always
+      depends_on:
+         task-manager-postgres:
+            condition: service_healthy
+      networks:
+         server:  # Connect to the existing server network
+         task-manager-network:  # Connect to database network
+         # mqtt:  # Uncomment if you need MQTT access
+      environment:
+         # Database Configuration
+         DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@task-manager-postgres:5432/${DB_NAME:-taskmanager}
+         DB_HOST: task-manager-postgres
+         DB_PORT: 5432
+         DB_USER: ${DB_USER:-postgres}
+         DB_PASSWORD: ${DB_PASSWORD:-postgres}
+         DB_NAME: ${DB_NAME:-taskmanager}
+         
+         # Application Configuration
+         NODE_ENV: production
+         PORT: 3000
+         
+         # Authorization Service (REQUIRED for authentication)
+         AUTHORIZATION_HOST: krcs-basic-data
+         AUTHORIZATION_PORT: 7888
+         
+         # Basic Data Service (Core API)
+         BASIC_DATA_HOST: krcs-basic-data
+         BASIC_DATA_HTTP_PORT: 7888
+         BASIC_DATA_GRPC_PORT: 7999
+         
+         # Mission Manager
+         MISSION_MANAGER_HOST: krcs-mission-manager
+         MISSION_MANAGER_HTTP_PORT: 6688
+         MISSION_MANAGER_GRPC_PORT: 6689
+         
+         # WCS Engine
+         WCS_HOST: kwcs-engine
+         WCS_HTTP_PORT: 8081
+         WCS_GRPC_PORT: 7998
+         
+         # ECS Engine
+         ECS_HOST: kecs-engine
+         ECS_HTTP_PORT: 8082
+         ECS_GRPC_PORT: 7997
+         
+         # Robot Control
+         ROBOT_CONTROL_HOST: krcs-robot-control
+         ROBOT_CONTROL_HTTP_PORT: 8866
+         ROBOT_CONTROL_GRPC_PORT: 6999
+         
+         # Algorithm Service
+         ALGORITHM_SERVICE_HOST: krcs-algorithm-service
+         ALGORITHM_SERVICE_HTTP_PORT: 9988
+         ALGORITHM_SERVICE_GRPC_PORT: 9888
+         
+         # KUKA Interface
+         KUKA_INTERFACE_HOST: kuka-interface
+         KUKA_INTERFACE_HTTP_PORT: 10870
+         KUKA_INTERFACE_GRPC_PORT: 8076
+         
+         # Data Services (gRPC)
+         MAP_SERVICE_HOST: map
+         MAP_SERVICE_PORT: 50010
+         STATION_SERVICE_HOST: station
+         STATION_SERVICE_PORT: 50110
+         LOCATION_SERVICE_HOST: location
+         LOCATION_SERVICE_PORT: 50100
+         PAYLOAD_SERVICE_HOST: payload
+         PAYLOAD_SERVICE_PORT: 50120
+         OBJECT_MODEL_SERVICE_HOST: objectmodel
+         OBJECT_MODEL_SERVICE_PORT: 50170
+         
+         # MQTT (if needed)
+         # MQTT_BROKER_URI: ssl://mqtt-broker:8883
+         
+         # Common
+         TZ: ${TIME_ZONE}
+         # PARAMS: ${JAVA_PARAMS}  # Uncomment if your container needs Java params
+      volumes:
+         - ${LOG_HOME}:/var/log/task-manager
+         # - ${CONFIG_HOME}:/opt/config  # Uncomment if needed
+      ports:
+         - "${APP_PORT:-3001}:3000"
+      # Uncomment if you need to wait for API services to be healthy
+      # depends_on:
+      #    krcs-basic-data:
+      #       condition: service_healthy
+
+volumes:
+   task-manager-postgres-data:
+      driver: local
+
+networks:
+   server:
+      external: true
+      name: server
+   task-manager-network:
+      driver: bridge
+   # mqtt:
+   #    external: true
+   #    name: mqtt
+
