@@ -40,29 +40,52 @@ export function MissionCard({
     ${mission.status === 'Completed' ? 'bg-gray-200 text-gray-700' : ''}
   `;
 
-  // Determine what to display based on displayType and original mission
-  // For In queue/Active/Completed missions, always show both from and to
-  // For Pending missions, convert based on display type
+  // Determine what points to show based on panel's perspective
+  // For Pending missions: 
+  //   - TASK SET VIEW (isCreatedByThisPanel): show only the relevant point
+  //   - TASK GET VIEW (!isCreatedByThisPanel): show both points (receive and send)
+  // For other statuses: show both from and to points
   const missionIsActiveOrInQueueOrCompleted = mission.status === 'Active' || mission.status === 'In queue' || mission.status === 'Completed';
   
-  const effectiveDestination = missionIsActiveOrInQueueOrCompleted
-    ? mission.destination // In queue/Active/Completed missions always show destination
-    : displayType === 'Send' && mission.type === 'Receive' 
-    ? mission.startPoint 
-    : displayType === 'Receive' && mission.type === 'Send'
-    ? null // Don't show destination when Send appears as Receive (pending)
-    : mission.destination;
-  
-  const effectiveStartPoint = missionIsActiveOrInQueueOrCompleted
-    ? mission.startPoint // In queue/Active/Completed missions always show start point
-    : displayType === 'Send' && mission.type === 'Receive'
-    ? null // Don't show start point when Receive appears as Send (pending)
-    : displayType === 'Receive' && mission.type === 'Send'
-    ? mission.destination // Show destination as start point when Send appears as Receive (pending)
-    : mission.startPoint;
+  // Get points to display in top left corner
+  const getPointsToDisplay = () => {
+    if (missionIsActiveOrInQueueOrCompleted) {
+      // For Active/In queue/Completed: show both points
+      return {
+        sendPoint: mission.startPoint,
+        receivePoint: mission.destination
+      };
+    }
+    
+    // For Pending missions
+    if (isCreatedByThisPanel) {
+      // TASK SET VIEW PANEL: show only the relevant point
+      if (displayType === 'Send') {
+        // Panel created a Send mission: show the destination (point they're sending to)
+        // This is what's stored in the mission for Send type
+        return {
+          sendPoint: mission.destination,  // Point they're sending to
+          receivePoint: null
+        };
+      } else {
+        // Panel created a Receive mission: show the startPoint (point they receive from)
+        // This is what's stored in the mission for Receive type
+        return {
+          sendPoint: null,
+          receivePoint: mission.startPoint  // Point they receive from
+        };
+      }
+    } else {
+      // TASK GET VIEW PANEL: show both points (receive and send)
+      // Show both where they will receive and where they will send from
+      return {
+        receivePoint: mission.destination,  // Where he will receive
+        sendPoint: mission.startPoint  // Where he will send from
+      };
+    }
+  };
 
-  const sendPointLabel = mission.status === 'Pending' ? 'Send point:' : 'From:';
-  const receivePointLabel = mission.status === 'Pending' ? 'Receive point:' : 'To:';
+  const { sendPoint, receivePoint } = getPointsToDisplay();
 
   return (
     <div className={cardClasses}>
@@ -70,17 +93,11 @@ export function MissionCard({
       <div className="flex justify-between items-start mb-2">
         {/* Left Side: Points - Always in top left corner with consistent styling */}
         <div className="flex flex-col text-gray-600 text-sm font-medium">
-          {effectiveStartPoint && (
-            <span>
-              <span className="mr-1 font-normal">{sendPointLabel}</span>
-              <span className="font-medium">{effectiveStartPoint}</span>
-            </span>
+          {sendPoint && (
+            <span>{sendPoint}</span>
           )}
-          {effectiveDestination && (
-            <span>
-              <span className="mr-1 font-normal">{receivePointLabel}</span>
-              <span className="font-medium">{effectiveDestination}</span>
-            </span>
+          {receivePoint && (
+            <span>{receivePoint}</span>
           )}
         </div>
         {/* Right Side: Status & Type */}
@@ -103,10 +120,10 @@ export function MissionCard({
       )}
 
       {/* Destination - Show if it exists (for non-pending missions) */}
-      {effectiveDestination && mission.status !== 'Pending' && (
+      {receivePoint && mission.status !== 'Pending' && (
         <div className="text-gray-600 mt-2">
           <span className="text-sm">To: </span>
-          <span className="font-medium">{effectiveDestination}</span>
+          <span className="font-medium">{receivePoint}</span>
         </div>
       )}
 

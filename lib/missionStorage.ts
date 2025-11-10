@@ -1,5 +1,5 @@
 // Mission storage utility for managing missions across all panels
-import type { Mission } from '@/types/missions';
+import type { Mission, MissionType } from '@/types/missions';
 
 const STORAGE_KEY = 'all_missions';
 
