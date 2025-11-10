@@ -40,64 +40,43 @@ export function MissionCard({
     ${mission.status === 'Completed' ? 'bg-gray-200 text-gray-700' : ''}
   `;
 
-  // Determine what points to show based on panel's perspective
-  // For Pending missions: 
-  //   - TASK SET VIEW (isCreatedByThisPanel): show only the relevant point
-  //   - TASK GET VIEW (!isCreatedByThisPanel): show both points (receive and send)
-  // For other statuses: show both from and to points
+  // Determine what to display based on displayType and original mission
+  // For In queue/Active/Completed missions, always show both from and to
+  // For Pending missions, convert based on display type
   const missionIsActiveOrInQueueOrCompleted = mission.status === 'Active' || mission.status === 'In queue' || mission.status === 'Completed';
   
-  // Get points to display in top left corner
-  const getPointsToDisplay = () => {
-    if (missionIsActiveOrInQueueOrCompleted) {
-      // For Active/In queue/Completed: show both points
-      return {
-        sendPoint: mission.startPoint,
-        receivePoint: mission.destination
-      };
-    }
-    
-    // For Pending missions
-    if (isCreatedByThisPanel) {
-      // TASK SET VIEW PANEL: show only the relevant point
-      if (displayType === 'Send') {
-        // Panel created a Send mission: show the destination (point they're sending to)
-        // This is what's stored in the mission for Send type
-        return {
-          sendPoint: mission.destination,  // Point they're sending to
-          receivePoint: null
-        };
-      } else {
-        // Panel created a Receive mission: show the startPoint (point they receive from)
-        // This is what's stored in the mission for Receive type
-        return {
-          sendPoint: null,
-          receivePoint: mission.startPoint  // Point they receive from
-        };
-      }
-    } else {
-      // TASK GET VIEW PANEL: show both points (receive and send)
-      // Show both where they will receive and where they will send from
-      return {
-        receivePoint: mission.destination,  // Where he will receive
-        sendPoint: mission.startPoint  // Where he will send from
-      };
-    }
-  };
-
-  const { sendPoint, receivePoint } = getPointsToDisplay();
+  const effectiveDestination = missionIsActiveOrInQueueOrCompleted
+    ? mission.destination // In queue/Active/Completed missions always show destination
+    : displayType === 'Send' && mission.type === 'Receive' 
+    ? mission.startPoint 
+    : displayType === 'Receive' && mission.type === 'Send'
+    ? null // Don't show destination when Send appears as Receive (pending)
+    : mission.destination;
+  
+  const effectiveStartPoint = missionIsActiveOrInQueueOrCompleted
+    ? mission.startPoint // In queue/Active/Completed missions always show start point
+    : displayType === 'Send' && mission.type === 'Receive'
+    ? null // Don't show start point when Receive appears as Send (pending)
+    : displayType === 'Receive' && mission.type === 'Send'
+    ? mission.destination // Show destination as start point when Send appears as Receive (pending)
+    : mission.startPoint;
 
   return (
     <div className={cardClasses}>
-      {/* Top Row: Points in top left corner, Status in top right */}
+      {/* Top Row: Robot Name, Start Point, and Status */}
       <div className="flex justify-between items-start mb-2">
-        {/* Left Side: Points - Always in top left corner with consistent styling */}
-        <div className="flex flex-col text-gray-600 text-sm font-medium">
-          {sendPoint && (
-            <span>{sendPoint}</span>
+        {/* Left Side: Robot & From */}
+        <div className="flex items-baseline gap-x-3 flex-wrap">
+          {/* Robot Name - Only show for In queue/Active/Completed missions */}
+          {(mission.status === 'In queue' || mission.status === 'Active' || mission.status === 'Completed') && mission.robotName && (
+            <span className="font-bold text-lg text-gray-800">{mission.robotName}</span>
           )}
-          {receivePoint && (
-            <span>{receivePoint}</span>
+          {/* Start Point - Show if it exists and not converted to destination */}
+          {effectiveStartPoint && (
+            <span className="text-gray-600 text-sm">
+              {(mission.status === 'In queue' || mission.status === 'Active' || mission.status === 'Completed') && 'From: '}
+              <span className="font-medium">{effectiveStartPoint}</span>
+            </span>
           )}
         </div>
         {/* Right Side: Status & Type */}
@@ -112,23 +91,18 @@ export function MissionCard({
         </div>
       </div>
 
-      {/* Robot Name - Show for In queue/Active/Completed missions */}
-      {(mission.status === 'In queue' || mission.status === 'Active' || mission.status === 'Completed') && mission.robotName && (
-        <div className="mb-2">
-          <span className="font-bold text-lg text-gray-800">{mission.robotName}</span>
-        </div>
-      )}
-
-      {/* Destination - Show if it exists (for non-pending missions) */}
-      {receivePoint && mission.status !== 'Pending' && (
+      {/* Destination - Show if it exists or if Receive mission appears as Send */}
+      {effectiveDestination && (
         <div className="text-gray-600 mt-2">
-          <span className="text-sm">To: </span>
-          <span className="font-medium">{receivePoint}</span>
+          <span className="text-sm">
+            {(mission.status === 'In queue' || mission.status === 'Active' || mission.status === 'Completed') && 'To: '}
+          </span>
+          <span className="font-medium">{effectiveDestination}</span>
         </div>
       )}
 
-      {/* Action Buttons - All buttons in same position (right aligned) */}
-      <div className="mt-4 text-right">
+      {/* Action Buttons */}
+      <div className="mt-4 flex justify-end">
         {mission.status === 'In queue' && (
           <button
             onClick={() => onCancelMission(mission.id)}
