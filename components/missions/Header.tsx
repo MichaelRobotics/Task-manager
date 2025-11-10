@@ -60,9 +60,9 @@ export function Header({
           </div>
         </div>
 
-        {/* Center: Panel ID - Hidden on mobile */}
-        <div className="hidden sm:block">
-          <span className="text-sm font-medium text-gray-600">Panel ID: {userId}</span>
+        {/* Center: Panel ID - Always visible */}
+        <div className="flex-1 text-center px-2">
+          <span className="text-xs sm:text-sm font-medium text-gray-600">Panel ID: {userId}</span>
         </div>
 
         {/* Right Side: Settings Button Only (Add Mission moved to floating button on mobile) */}
