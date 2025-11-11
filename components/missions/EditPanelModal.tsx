@@ -474,23 +474,62 @@ export function EditPanelModal({
                   Select from existing cargo types:
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {matchingExistingLabels.map((label) => (
-                    <button
-                      key={label}
-                      type="button"
-                      onClick={() => {
-                        setSelectedExistingLabel(label);
-                        setNewLabelInput(label);
-                      }}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                        selectedExistingLabel === label
-                          ? 'bg-blue-600 text-white border-2 border-blue-700'
-                          : 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-2 border-transparent'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                  {matchingExistingLabels.map((label) => {
+                    // Check if this cargo type is used in other locations
+                    const usedInLocations = Object.keys(locationLabelAssignments)
+                      .filter(loc => loc !== labelModalLocation)
+                      .filter(loc => 
+                        locationLabelAssignments[loc]?.some(a => a.label === label)
+                      )
+                      .map(loc => locationNames[loc] || loc);
+                    
+                    return (
+                      <div
+                        key={label}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors flex items-center gap-1 ${
+                          selectedExistingLabel === label
+                            ? 'bg-blue-600 text-white border-2 border-blue-700'
+                            : 'bg-blue-100 text-blue-800 hover:bg-blue-200 border-2 border-transparent'
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedExistingLabel(label);
+                            setNewLabelInput(label);
+                          }}
+                          className="flex-1"
+                        >
+                          {label}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (usedInLocations.length > 0) {
+                              alert(`Cannot remove. This cargo type is used in: ${usedInLocations.join(', ')}\n\nPlease remove it from those locations first.`);
+                            } else {
+                              if (confirm(`Remove "${label}" from all locations and delete it globally?`)) {
+                                handleRemoveGlobalLabel(label);
+                                if (selectedExistingLabel === label) {
+                                  setSelectedExistingLabel('');
+                                  setNewLabelInput('');
+                                }
+                              }
+                            }
+                          }}
+                          className={`font-bold text-xs leading-none ${
+                            selectedExistingLabel === label
+                              ? 'text-white hover:text-blue-200'
+                              : 'text-blue-600 hover:text-blue-900'
+                          }`}
+                          title={usedInLocations.length > 0 ? `Used in: ${usedInLocations.join(', ')}` : 'Remove globally'}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -547,7 +586,6 @@ export function EditPanelModal({
               </button>
             </div>
           </div>
-
 
           <div className="flex justify-end gap-3">
             <button
