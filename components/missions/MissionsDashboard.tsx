@@ -285,13 +285,19 @@ export function MissionsDashboard() {
 
     // Assign location based on mission type and selected area
     if (newMission.type === 'Send' && missionDetails.selectedArea) {
-      // For Send missions, selected area is the destination (from Send to Areas)
-      newMission.destination = `Point ${missionDetails.selectedArea}`;
-      // Start point will be assigned when operator clicks "Send" button (from selectedAreas in step 1)
-    } else if (newMission.type === 'Receive' && missionDetails.selectedArea) {
-      // For Receive missions, selected area is the start point (from Receive From Areas)
+      // For Send missions, selected area is the origin area (where to send FROM)
+      // Start point is the selected origin area
       newMission.startPoint = `Point ${missionDetails.selectedArea}`;
-      // Destination will be assigned when operator clicks "Receive" button (from selectedAreas in step 1)
+      // Destination is from sendToLocations (step 2) - where we want to send to
+      // Use first sendTo location as destination
+      newMission.destination = panelSendTo.length > 0 ? `Point ${panelSendTo[0]}` : null;
+    } else if (newMission.type === 'Receive' && missionDetails.selectedArea) {
+      // For Receive missions, selected area is the origin area (where to receive TO)
+      // Destination is the selected origin area
+      newMission.destination = `Point ${missionDetails.selectedArea}`;
+      // Start point is from receiveFromLocations (step 3) - where we want to receive from
+      // Use first receiveFrom location as start point
+      newMission.startPoint = panelReceiveFrom.length > 0 ? `Point ${panelReceiveFrom[0]}` : null;
     }
 
     // Save mission to global storage
@@ -400,6 +406,62 @@ export function MissionsDashboard() {
     setMissions(panelMissions);
   };
 
+  // Handle Send mission with area selection (when this panel accepts a Send mission from another panel)
+  const handleSendMissionWithArea = (id: number, area: string) => {
+    if (!userId) return;
+    const allMissions = getAllMissions();
+    const updatedMissions = allMissions.map((mission) => {
+      if (mission.id === id) {
+        const assignedRobot = ROBOT_NAMES[Math.floor(Math.random() * ROBOT_NAMES.length)];
+        
+        const updated = {
+          ...mission,
+          status: 'In queue' as MissionStatus,
+          robotName: assignedRobot,
+          startPoint: `Point ${area}`, // Selected area where this panel is sending from
+          destination: mission.destination, // Keep existing destination (where origin panel wants to send to)
+          assignedToPanelId: userId,
+        };
+        saveMission(updated);
+        return updated;
+      }
+      return mission;
+    });
+    saveMissions(updatedMissions);
+
+    // Reload missions filtered for current panel
+    const panelMissions = getMissionsForPanel(userId, panelSelectedAreas, panelSendTo, panelReceiveFrom);
+    setMissions(panelMissions);
+  };
+
+  // Handle Receive mission with area selection (when this panel accepts a Receive mission from another panel)
+  const handleReceiveMissionWithArea = (id: number, area: string) => {
+    if (!userId) return;
+    const allMissions = getAllMissions();
+    const updatedMissions = allMissions.map((mission) => {
+      if (mission.id === id) {
+        const assignedRobot = ROBOT_NAMES[Math.floor(Math.random() * ROBOT_NAMES.length)];
+        
+        const updated = {
+          ...mission,
+          status: 'In queue' as MissionStatus,
+          robotName: assignedRobot,
+          startPoint: mission.startPoint, // Keep existing startPoint (where origin panel wants to receive from)
+          destination: `Point ${area}`, // Selected area where this panel is receiving to
+          assignedToPanelId: userId,
+        };
+        saveMission(updated);
+        return updated;
+      }
+      return mission;
+    });
+    saveMissions(updatedMissions);
+
+    // Reload missions filtered for current panel
+    const panelMissions = getMissionsForPanel(userId, panelSelectedAreas, panelSendTo, panelReceiveFrom);
+    setMissions(panelMissions);
+  };
+
   // Handle automatic status transitions: In queue -> Active -> Completed
   useEffect(() => {
     const allMissions = getAllMissions();
@@ -486,6 +548,11 @@ export function MissionsDashboard() {
                     onCancelMission={handleCancelMission}
                     onSendMission={handleSendMission}
                     onReceiveMission={handleReceiveMission}
+                    onSendMissionWithArea={handleSendMissionWithArea}
+                    onReceiveMissionWithArea={handleReceiveMissionWithArea}
+                    panelSelectedAreas={panelSelectedAreas}
+                    panelSendTo={panelSendTo}
+                    panelReceiveFrom={panelReceiveFrom}
                   />
                 ))}
               </div>

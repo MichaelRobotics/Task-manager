@@ -3,6 +3,7 @@
 import { useState, useLayoutEffect } from 'react';
 import type { MissionType } from '@/types/missions';
 import { ALL_LOCATIONS } from '@/lib/mockData';
+import { getAllPanels } from '@/lib/panelStorage';
 
 // Get global cargo types from localStorage
 const GLOBAL_LABELS_STORAGE_KEY = 'global_labels';
@@ -78,6 +79,7 @@ export function AddMissionModal({
   const [availableCargoTypes, setAvailableCargoTypes] = useState<string[]>([]);
   const [locationLabelAssignments, setLocationLabelAssignments] = useState<Record<string, LabelAssignment[]>>({});
   const [locationNames, setLocationNames] = useState<Record<string, string>>({});
+  const [areaWarning, setAreaWarning] = useState<string | null>(null);
 
   useLayoutEffect(() => {
     if (isOpen) {
@@ -95,6 +97,7 @@ export function AddMissionModal({
       setCargoType('');
       setNumberOfPieces('');
       setSelectedArea('');
+      setAreaWarning(null);
     }
   }, [isOpen, selectedAreas]);
 
@@ -104,6 +107,59 @@ export function AddMissionModal({
 
   const handleSelectType = (type: MissionType) => {
     setSelectedType(type);
+    setAreaWarning(null);
+  };
+
+  // Check if an area has a panel connected that can see missions for that area
+  const checkAreaHasPanel = (area: string, missionType: MissionType): boolean => {
+    const allPanels = getAllPanels();
+    
+    if (missionType === 'Send') {
+      // For Send missions, check if any panel has this area in their selectedAreas or receiveFromLocations
+      // (so they can receive missions sent to this area)
+      return allPanels.some(panel => {
+        const hasInSelectedAreas = panel.selectedAreas?.includes(area) || false;
+        const hasInReceiveFrom = panel.receiveFromLocations?.includes(area) || false;
+        return hasInSelectedAreas || hasInReceiveFrom;
+      });
+    } else {
+      // For Receive missions, check if any panel has this area in their selectedAreas or sendToLocations
+      // (so they can send missions from this area)
+      return allPanels.some(panel => {
+        const hasInSelectedAreas = panel.selectedAreas?.includes(area) || false;
+        const hasInSendTo = panel.sendToLocations?.includes(area) || false;
+        return hasInSelectedAreas || hasInSendTo;
+      });
+    }
+  };
+
+  const handleSelectArea = (area: string) => {
+    setSelectedArea(area);
+    setAreaWarning(null);
+    
+    // Check if the destination/source area has a connected panel
+    if (selectedType) {
+      let targetAreas: string[] = [];
+      if (selectedType === 'Send') {
+        // For Send: check if sendToLocations have panels connected
+        targetAreas = sendToLocations;
+      } else {
+        // For Receive: check if receiveFromLocations have panels connected
+        targetAreas = receiveFromLocations;
+      }
+      
+      // Check if any of the target areas have a connected panel
+      const hasPanel = targetAreas.some(targetArea => {
+        return checkAreaHasPanel(targetArea, selectedType);
+      });
+      
+      if (!hasPanel && targetAreas.length > 0) {
+        const areaDisplayName = locationNames[targetAreas[0]] || targetAreas[0];
+        setAreaWarning(`Area "${areaDisplayName}" doesn't have a panel connected, and nobody can see this mission. Report it.`);
+      } else if (targetAreas.length === 0) {
+        setAreaWarning(`No ${selectedType === 'Send' ? 'Send to' : 'Receive from'} areas configured. Please configure in panel settings.`);
+      }
+    }
   };
 
   // Check if Origin areas can send (have cargo types with 'send' or 'both')
@@ -154,22 +210,19 @@ export function AddMissionModal({
   };
 
   // Get available areas based on selected cargo type and mission type
+  // For Send: show origin areas (selectedAreas) that can send the selected cargo type
+  // For Receive: show origin areas (selectedAreas) that can receive the selected cargo type
   const getAvailableAreas = (): string[] => {
-    // For Send: show ONLY areas from step 2 (Send to Areas)
-    // For Receive: show ONLY areas from step 3 (Receive From Areas)
-    const baseAreas = selectedType === 'Send' ? sendToLocations : receiveFromLocations;
+    // Use origin areas (selectedAreas) instead of sendToLocations/receiveFromLocations
+    if (selectedAreas.length === 0) return [];
     
-    // If no areas configured in the respective step, return empty
-    if (baseAreas.length === 0) return [];
-    
-    // If no cargo type is selected yet, return all base areas from the respective step
+    // If no cargo type is selected yet, return all origin areas
     if (!cargoType) {
-      return baseAreas;
+      return selectedAreas;
     }
     
-    // Filter areas based on cargo type and mission type
-    // Only show areas that are in the baseAreas (step 2 for Send, step 3 for Receive)
-    return baseAreas.filter(area => {
+    // Filter origin areas based on cargo type and mission type capability
+    return selectedAreas.filter(area => {
       const assignments = locationLabelAssignments[area] || [];
       
       // If area has no cargo type assignments, include it (backward compatibility)
@@ -178,14 +231,14 @@ export function AddMissionModal({
       }
       
       if (selectedType === 'Send') {
-        // For Send: show areas from step 2 that can receive this cargo type
-        return assignments.some(a => 
-          a.label === cargoType && (a.type === 'receive' || a.type === 'both')
-        );
-      } else if (selectedType === 'Receive') {
-        // For Receive: show areas from step 3 that can send this cargo type
+        // For Send: show origin areas that can send this cargo type
         return assignments.some(a => 
           a.label === cargoType && (a.type === 'send' || a.type === 'both')
+        );
+      } else if (selectedType === 'Receive') {
+        // For Receive: show origin areas that can receive this cargo type
+        return assignments.some(a => 
+          a.label === cargoType && (a.type === 'receive' || a.type === 'both')
         );
       }
       return false;
@@ -291,6 +344,7 @@ export function AddMissionModal({
                           onClick={() => {
                             setCargoType(type);
                             setSelectedArea(''); // Reset area selection when cargo type changes
+                            setAreaWarning(null); // Reset warning when cargo type changes
                           }}
                           className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                             cargoType === type
@@ -316,7 +370,7 @@ export function AddMissionModal({
               {selectedType && cargoType && (
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {selectedType === 'Send' ? 'Select Area to Send To' : 'Select Area to Receive From'}
+                    {selectedType === 'Send' ? 'Select Area to Send From' : 'Select Area to Receive to'}
                   </label>
                   {getAvailableAreas().length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
@@ -324,7 +378,7 @@ export function AddMissionModal({
                         <button
                           key={area}
                           type="button"
-                          onClick={() => setSelectedArea(area)}
+                          onClick={() => handleSelectArea(area)}
                           className={`px-3 py-2.5 sm:py-2 border rounded-md text-sm font-semibold transition-colors touch-manipulation active:scale-95 ${
                             selectedArea === area
                               ? 'bg-blue-600 text-white border-blue-600'
@@ -338,13 +392,19 @@ export function AddMissionModal({
                   ) : (
                     <p className="text-sm text-gray-500">
                       {selectedType === 'Send' 
-                        ? (sendToLocations.length === 0 
-                            ? 'No "Send to Areas" configured. Please configure in panel settings.'
-                            : 'No areas available for this cargo type. Please configure areas in panel settings.')
-                        : (receiveFromLocations.length === 0 
-                            ? 'No "Receive From Areas" configured. Please configure in panel settings.'
-                            : 'No areas available for this cargo type. Please configure areas in panel settings.')}
+                        ? (selectedAreas.length === 0
+                            ? 'No origin areas configured. Please configure in panel settings.'
+                            : 'No origin areas available for sending this cargo type. Please configure cargo types in origin areas.')
+                        : (selectedAreas.length === 0
+                            ? 'No origin areas configured. Please configure in panel settings.'
+                            : 'No origin areas available for receiving this cargo type. Please configure cargo types in origin areas.')}
                     </p>
+                  )}
+                  {/* Warning message if area doesn't have a connected panel */}
+                  {areaWarning && (
+                    <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                      <p className="text-sm text-amber-800 font-medium">{areaWarning}</p>
+                    </div>
                   )}
                 </div>
               )}

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react';
 import type { Mission } from '@/types/missions';
 import { getPanelByUserId } from '@/lib/panelStorage';
 
@@ -23,6 +24,11 @@ interface MissionCardProps {
   onCancelMission: (id: number) => void;
   onSendMission: (id: number) => void;
   onReceiveMission: (id: number) => void;
+  onSendMissionWithArea?: (id: number, area: string) => void; // For missions created by this panel - Send with area selection
+  onReceiveMissionWithArea?: (id: number, area: string) => void; // For missions created by this panel - Receive with area selection
+  panelSelectedAreas?: string[]; // Origin areas for this panel
+  panelSendTo?: string[]; // Send to areas for this panel
+  panelReceiveFrom?: string[]; // Receive from areas for this panel
 }
 
 export function MissionCard({ 
@@ -31,8 +37,15 @@ export function MissionCard({
   isCreatedByThisPanel,
   onCancelMission, 
   onSendMission, 
-  onReceiveMission 
+  onReceiveMission,
+  onSendMissionWithArea,
+  onReceiveMissionWithArea,
+  panelSelectedAreas = [],
+  panelSendTo = [],
+  panelReceiveFrom = []
 }: MissionCardProps) {
+  const [showAreaModal, setShowAreaModal] = useState(false);
+  const [selectedArea, setSelectedArea] = useState<string>('');
   const isActive = mission.status === 'Active';
   const isPending = mission.status === 'Pending';
   const isInQueue = mission.status === 'In queue';
@@ -86,50 +99,154 @@ export function MissionCard({
   
   if (isCreatedByThisPanel) {
     // Panel created this mission - show as original type
-    effectiveStartPoint = mission.startPoint;
-    effectiveDestination = mission.destination;
+    if (mission.status === 'Pending') {
+      // For Pending missions created by this panel:
+      // - Send: Don't show "To" (will be set when another panel accepts)
+      // - Receive: Don't show "From" (will be set when another panel accepts)
+      if (mission.type === 'Send') {
+        effectiveStartPoint = mission.startPoint;
+        effectiveDestination = null; // Don't show "To" for Pending Send missions
+      } else if (mission.type === 'Receive') {
+        effectiveStartPoint = null; // Don't show "From" for Pending Receive missions
+        effectiveDestination = mission.destination;
+      }
+    } else {
+      // For non-Pending missions, show both
+      effectiveStartPoint = mission.startPoint;
+      effectiveDestination = mission.destination;
+    }
   } else {
     // Another panel created this mission
-    if (displayType === 'Send' && mission.type === 'Send') {
-      // Original Send mission shown as Send in receiving panel
-      // From: startPoint (area in panel that gets mission - set when they clicked Send)
-      // To: destination from origin panel (where origin panel wants to send to)
-      effectiveStartPoint = mission.startPoint;
-      effectiveDestination = mission.destination;
-    } else if (displayType === 'Receive' && mission.type === 'Receive') {
-      // Original Receive mission shown as Receive in sending panel
-      // From: startPoint from origin panel (where origin panel wants to receive from)
-      // To: destination (area in panel that gets mission - set when they clicked Receive)
-      effectiveStartPoint = mission.startPoint;
-      effectiveDestination = mission.destination;
-    } else if (displayType === 'Send' && mission.type === 'Receive') {
-      // Original Receive mission shown as Send in receiving panel
-      // From: original startPoint (where origin panel wants to receive from - preserved in handleSendMission)
-      // To: area in origin panel where they want to receive to (origin panel's selectedAreas, step 1)
-      // After handleSendMission fix, mission.startPoint is preserved for Receive missions
-      effectiveStartPoint = mission.startPoint; // Preserved original value (C3 - where origin wants to receive from)
-      // Use origin panel's selected area (step 1) as the destination where they want to receive to
-      if (originSelectedAreas.length > 0) {
-        effectiveDestination = originSelectedAreas[0];
-      } else {
-        // Fallback to mission.destination if origin areas not available
-        effectiveDestination = mission.destination || mission.startPoint;
+    const missionIsSet = mission.status === 'Active' || mission.status === 'In queue' || mission.status === 'Completed';
+    
+    if (missionIsSet) {
+      // For missions that have been set, show both From and To
+      if (displayType === 'Send' && mission.type === 'Send') {
+        // Original Send mission shown as Send in receiving panel
+        // From: startPoint (area in panel that gets mission - set when they clicked Send)
+        // To: destination from origin panel (where origin panel wants to send to)
+        effectiveStartPoint = mission.startPoint;
+        effectiveDestination = mission.destination;
+      } else if (displayType === 'Receive' && mission.type === 'Receive') {
+        // Original Receive mission shown as Receive in sending panel
+        // From: startPoint from origin panel (where origin panel wants to receive from)
+        // To: destination (area in panel that gets mission - set when they clicked Receive)
+        effectiveStartPoint = mission.startPoint;
+        effectiveDestination = mission.destination;
+      } else if (displayType === 'Send' && mission.type === 'Receive') {
+        // Original Receive mission shown as Send in receiving panel
+        // From: startPoint (area in panel that gets mission - set when they clicked Send)
+        // To: area in origin panel where they want to receive to (origin panel's selectedAreas, step 1)
+        effectiveStartPoint = mission.startPoint;
+        if (originSelectedAreas.length > 0) {
+          effectiveDestination = originSelectedAreas[0];
+        } else {
+          effectiveDestination = mission.destination || mission.startPoint;
+        }
+      } else if (displayType === 'Receive' && mission.type === 'Send') {
+        // Original Send mission shown as Receive in sending panel
+        // From: area in origin panel (the area that created the Send mission)
+        // To: destination (area in panel that gets mission - set when they clicked Receive)
+        if (originSelectedAreas.length > 0) {
+          effectiveStartPoint = originSelectedAreas[0];
+        } else {
+          effectiveStartPoint = null;
+        }
+        effectiveDestination = mission.destination;
       }
-    } else if (displayType === 'Receive' && mission.type === 'Send') {
-      // Original Send mission shown as Receive in sending panel
-      // From: area in origin panel (the area that created the Send mission)
-      // To: original destination from Send mission (preserved in startPoint after Receive is clicked, or in destination if still pending)
-      if (originSelectedAreas.length > 0) {
-        // Use the first origin area as the "From" location
-        effectiveStartPoint = originSelectedAreas[0];
-      } else {
+    } else {
+      // For Pending missions from another panel:
+      // - Send: Don't show "From" (will be set when this panel clicks Send and selects area)
+      // - Receive: Don't show "To" (will be set when this panel clicks Receive and selects area)
+      if (displayType === 'Send') {
+        // Send mission: Don't show "From" for Pending
         effectiveStartPoint = null;
+        // Show "To" (destination from origin panel)
+        if (mission.type === 'Send') {
+          effectiveDestination = mission.destination;
+        } else {
+          // Receive mission shown as Send
+          if (originSelectedAreas.length > 0) {
+            effectiveDestination = originSelectedAreas[0];
+          } else {
+            effectiveDestination = mission.destination || mission.startPoint;
+          }
+        }
+      } else if (displayType === 'Receive') {
+        // Receive mission: Don't show "To" for Pending
+        effectiveDestination = null;
+        // Show "From" (startPoint from origin panel)
+        if (mission.type === 'Receive') {
+          effectiveStartPoint = mission.startPoint;
+        } else {
+          // Send mission shown as Receive
+          if (originSelectedAreas.length > 0) {
+            effectiveStartPoint = originSelectedAreas[0];
+          } else {
+            effectiveStartPoint = null;
+          }
+        }
       }
-      // For Pending: use mission.destination (original Send destination)
-      // For set missions: mission.startPoint contains the original destination (set when Receive was clicked)
-      effectiveDestination = mission.startPoint || mission.destination; // Use startPoint if set (contains original destination), otherwise use destination
     }
   }
+
+  // Get available areas based on displayType (how this mission appears in current panel)
+  // Only show areas that can actually handle the specific cargo type
+  const getAvailableAreas = (): string[] => {
+    if (!mission.cargoType) return [];
+    const LOCATION_LABELS_STORAGE_KEY = 'location_labels';
+    const locationLabels = typeof window !== 'undefined' 
+      ? JSON.parse(localStorage.getItem(LOCATION_LABELS_STORAGE_KEY) || '{}')
+      : {};
+    
+    if (displayType === 'Send') {
+      // For Send missions: show ONLY areas that can send this specific cargo type (where to send FROM)
+      return panelSelectedAreas.filter(area => {
+        const assignments = locationLabels[area] || [];
+        // Only include areas that have the specific cargo type assigned with 'send' or 'both'
+        return assignments.some((a: { label: string; type: string }) => 
+          a.label === mission.cargoType && (a.type === 'send' || a.type === 'both')
+        );
+      });
+    } else {
+      // For Receive missions: show ONLY areas that can receive this specific cargo type (where to receive TO)
+      return panelSelectedAreas.filter(area => {
+        const assignments = locationLabels[area] || [];
+        // Only include areas that have the specific cargo type assigned with 'receive' or 'both'
+        return assignments.some((a: { label: string; type: string }) => 
+          a.label === mission.cargoType && (a.type === 'receive' || a.type === 'both')
+        );
+      });
+    }
+  };
+
+  const handleOpenAreaModal = () => {
+    setSelectedArea('');
+    setShowAreaModal(true);
+  };
+
+  const handleCloseAreaModal = () => {
+    setShowAreaModal(false);
+    setSelectedArea('');
+  };
+
+  const handleConfirmArea = () => {
+    if (!selectedArea) return;
+    
+    if (displayType === 'Send' && onSendMissionWithArea) {
+      // For Send missions: selecting where to send FROM
+      onSendMissionWithArea(mission.id, selectedArea);
+    } else if (displayType === 'Receive' && onReceiveMissionWithArea) {
+      // For Receive missions: selecting where to receive TO
+      onReceiveMissionWithArea(mission.id, selectedArea);
+    }
+    
+    handleCloseAreaModal();
+  };
+
+  const availableAreas = getAvailableAreas();
+
+  const locationNames = getLocationNames();
 
   return (
     <div className={cardClasses}>
@@ -204,7 +321,7 @@ export function MissionCard({
         )}
         {mission.status === 'Pending' && !isCreatedByThisPanel && displayType === 'Send' && (
           <button
-            onClick={() => onSendMission(mission.id)}
+            onClick={handleOpenAreaModal}
             className="px-5 py-2.5 sm:px-4 sm:py-1.5 bg-green-500 text-white text-sm sm:text-sm font-medium rounded-md shadow-sm hover:bg-green-600 active:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-400 transition-colors touch-manipulation"
           >
             Send
@@ -212,13 +329,72 @@ export function MissionCard({
         )}
         {mission.status === 'Pending' && !isCreatedByThisPanel && displayType === 'Receive' && (
           <button
-            onClick={() => onReceiveMission(mission.id)}
+            onClick={handleOpenAreaModal}
             className="px-5 py-2.5 sm:px-4 sm:py-1.5 bg-blue-500 text-white text-sm sm:text-sm font-medium rounded-md shadow-sm hover:bg-blue-600 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors touch-manipulation"
           >
             Receive
           </button>
         )}
       </div>
+
+      {/* Area Selection Modal */}
+      {showAreaModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md m-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">
+                {displayType === 'Send' 
+                  ? 'Select Area to Send From' 
+                  : 'Select Area to Receive to'}
+              </h3>
+              <button
+                onClick={handleCloseAreaModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="mb-4">
+              {availableAreas.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {availableAreas.map((area) => (
+                    <button
+                      key={area}
+                      type="button"
+                      onClick={() => setSelectedArea(area)}
+                      className={`px-3 py-2 border rounded-md text-sm font-semibold transition-colors ${
+                        selectedArea === area
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                      }`}
+                    >
+                      {locationNames[area] || area}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  No areas available for this cargo type.
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleConfirmArea}
+                disabled={!selectedArea}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
