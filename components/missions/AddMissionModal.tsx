@@ -126,6 +126,33 @@ export function AddMissionModal({
     });
   };
 
+  // Get available cargo types based on selected mission type and origin areas
+  const getAvailableCargoTypes = (): string[] => {
+    if (!selectedType || selectedAreas.length === 0) return [];
+    
+    // Collect all cargo types that origin areas can handle for this mission type
+    const validCargoTypes = new Set<string>();
+    
+    selectedAreas.forEach(area => {
+      const assignments = locationLabelAssignments[area] || [];
+      assignments.forEach(assignment => {
+        if (selectedType === 'Send') {
+          // For SEND: only include cargo types that origin area can send
+          if (assignment.type === 'send' || assignment.type === 'both') {
+            validCargoTypes.add(assignment.label);
+          }
+        } else if (selectedType === 'Receive') {
+          // For RECEIVE: only include cargo types that origin area can receive
+          if (assignment.type === 'receive' || assignment.type === 'both') {
+            validCargoTypes.add(assignment.label);
+          }
+        }
+      });
+    });
+    
+    return Array.from(validCargoTypes);
+  };
+
   // Get available areas based on selected cargo type and mission type
   const getAvailableAreas = (): string[] => {
     // For Send: show ONLY areas from step 2 (Send to Areas)
@@ -255,9 +282,9 @@ export function AddMissionModal({
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Select Cargo Type
                   </label>
-                  {availableCargoTypes.length > 0 ? (
+                  {getAvailableCargoTypes().length > 0 ? (
                     <div className="flex flex-wrap gap-2">
-                      {availableCargoTypes.map((type) => (
+                      {getAvailableCargoTypes().map((type) => (
                         <button
                           key={type}
                           type="button"
@@ -276,7 +303,11 @@ export function AddMissionModal({
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-500">No cargo types available. Please add cargo types in panel settings.</p>
+                    <p className="text-sm text-gray-500">
+                      {selectedType === 'Send' 
+                        ? 'No cargo types available for sending from origin areas. Please configure cargo types with "Send" or "Both" in panel settings.'
+                        : 'No cargo types available for receiving in origin areas. Please configure cargo types with "Receive" or "Both" in panel settings.'}
+                    </p>
                   )}
                 </div>
               )}

@@ -1,6 +1,7 @@
 'use client'
 
 import type { Mission } from '@/types/missions';
+import { getPanelByUserId } from '@/lib/panelStorage';
 
 // Get custom location names from localStorage
 const AREA_NAMES_STORAGE_KEY = 'area_custom_names';
@@ -60,11 +61,6 @@ export function MissionCard({
     ${mission.status === 'Completed' ? 'bg-gray-200 text-gray-700' : ''}
   `;
 
-  // Determine what to display based on displayType and original mission
-  // For In queue/Active/Completed missions, always show both from and to
-  // For Pending missions, convert based on display type
-  const missionIsActiveOrInQueueOrCompleted = mission.status === 'Active' || mission.status === 'In queue' || mission.status === 'Completed';
-  
   // Helper to remove "Point " prefix and get area name
   const getAreaDisplayName = (location: string | null): string | null => {
     if (!location) return null;
@@ -74,21 +70,66 @@ export function MissionCard({
     return locationNames[areaCode] || areaCode;
   };
   
-  const effectiveDestination = missionIsActiveOrInQueueOrCompleted
-    ? mission.destination // In queue/Active/Completed missions always show destination
-    : displayType === 'Send' && mission.type === 'Receive' 
-    ? mission.startPoint 
-    : displayType === 'Receive' && mission.type === 'Send'
-    ? null // Don't show destination when Send appears as Receive (pending)
-    : mission.destination;
+  // Determine what to display based on displayType
+  // Use the same logic for all statuses to maintain consistent "From" and "To" values
+  // - Send: From = startPoint (area in panel that gets mission), To = destination (area in panel which set mission)
+  // - Receive: From = startPoint (area in panel which set mission), To = destination (area in panel that gets mission)
   
-  const effectiveStartPoint = missionIsActiveOrInQueueOrCompleted
-    ? mission.startPoint // In queue/Active/Completed missions always show start point
-    : displayType === 'Send' && mission.type === 'Receive'
-    ? null // Don't show start point when Receive appears as Send (pending)
-    : displayType === 'Receive' && mission.type === 'Send'
-    ? mission.destination // Show destination as start point when Send appears as Receive (pending)
-    : mission.startPoint;
+  // Get origin panel's selected areas if mission was created by another panel
+  const originPanel = !isCreatedByThisPanel && mission.createdByPanelId 
+    ? getPanelByUserId(mission.createdByPanelId)
+    : null;
+  const originSelectedAreas = originPanel?.selectedAreas || [];
+  
+  let effectiveStartPoint: string | null = null;
+  let effectiveDestination: string | null = null;
+  
+  if (isCreatedByThisPanel) {
+    // Panel created this mission - show as original type
+    effectiveStartPoint = mission.startPoint;
+    effectiveDestination = mission.destination;
+  } else {
+    // Another panel created this mission
+    if (displayType === 'Send' && mission.type === 'Send') {
+      // Original Send mission shown as Send in receiving panel
+      // From: startPoint (area in panel that gets mission - set when they clicked Send)
+      // To: destination from origin panel (where origin panel wants to send to)
+      effectiveStartPoint = mission.startPoint;
+      effectiveDestination = mission.destination;
+    } else if (displayType === 'Receive' && mission.type === 'Receive') {
+      // Original Receive mission shown as Receive in sending panel
+      // From: startPoint from origin panel (where origin panel wants to receive from)
+      // To: destination (area in panel that gets mission - set when they clicked Receive)
+      effectiveStartPoint = mission.startPoint;
+      effectiveDestination = mission.destination;
+    } else if (displayType === 'Send' && mission.type === 'Receive') {
+      // Original Receive mission shown as Send in receiving panel
+      // From: original startPoint (where origin panel wants to receive from - preserved in handleSendMission)
+      // To: area in origin panel where they want to receive to (origin panel's selectedAreas, step 1)
+      // After handleSendMission fix, mission.startPoint is preserved for Receive missions
+      effectiveStartPoint = mission.startPoint; // Preserved original value (C3 - where origin wants to receive from)
+      // Use origin panel's selected area (step 1) as the destination where they want to receive to
+      if (originSelectedAreas.length > 0) {
+        effectiveDestination = originSelectedAreas[0];
+      } else {
+        // Fallback to mission.destination if origin areas not available
+        effectiveDestination = mission.destination || mission.startPoint;
+      }
+    } else if (displayType === 'Receive' && mission.type === 'Send') {
+      // Original Send mission shown as Receive in sending panel
+      // From: area in origin panel (the area that created the Send mission)
+      // To: original destination from Send mission (preserved in startPoint after Receive is clicked, or in destination if still pending)
+      if (originSelectedAreas.length > 0) {
+        // Use the first origin area as the "From" location
+        effectiveStartPoint = originSelectedAreas[0];
+      } else {
+        effectiveStartPoint = null;
+      }
+      // For Pending: use mission.destination (original Send destination)
+      // For set missions: mission.startPoint contains the original destination (set when Receive was clicked)
+      effectiveDestination = mission.startPoint || mission.destination; // Use startPoint if set (contains original destination), otherwise use destination
+    }
+  }
 
   return (
     <div className={cardClasses}>

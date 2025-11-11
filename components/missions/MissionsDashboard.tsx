@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Mission, MissionStatus } from '@/types/missions';
 import { initialMissions, ROBOT_NAMES, generateId } from '@/lib/mockData';
 import { savePanel, getPanelByUserId, deletePanel, getAllPanels } from '@/lib/panelStorage';
@@ -20,11 +20,25 @@ export function MissionsDashboard() {
   const [userId, setUserId] = useState<string | null>(null);
   const [panelSendTo, setPanelSendTo] = useState<string[]>([]);
   const [panelReceiveFrom, setPanelReceiveFrom] = useState<string[]>([]);
+  const [panelSelectedAreas, setPanelSelectedAreas] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isAdminActionsModalOpen, setIsAdminActionsModalOpen] = useState(false);
   const [isChangePanelModalOpen, setIsChangePanelModalOpen] = useState(false);
   const [isEditPanelModalOpen, setIsEditPanelModalOpen] = useState(false);
+  const hasInitializedWithPanel = useRef(false);
+
+  // On initial load, if panels already exist, default to the first one
+  useEffect(() => {
+    if (hasInitializedWithPanel.current) return;
+    hasInitializedWithPanel.current = true;
+
+    const panels = getAllPanels();
+    if (panels.length > 0) {
+      setUserId(panels[0].userId);
+      setFilter('Pending');
+    }
+  }, []);
 
   // Initialize missions storage (empty - no default missions)
   // Clear any old missions that don't have createdByPanelId
@@ -51,9 +65,19 @@ export function MissionsDashboard() {
       if (storedPanel) {
         setPanelSendTo(storedPanel.sendToLocations);
         setPanelReceiveFrom(storedPanel.receiveFromLocations);
+        setPanelSelectedAreas(
+          storedPanel.selectedAreas && storedPanel.selectedAreas.length > 0
+            ? storedPanel.selectedAreas
+            : [...new Set([...storedPanel.sendToLocations, ...storedPanel.receiveFromLocations])]
+        );
         // Filter missions for this panel
+        const originAreas =
+          storedPanel.selectedAreas && storedPanel.selectedAreas.length > 0
+            ? storedPanel.selectedAreas
+            : [...new Set([...storedPanel.sendToLocations, ...storedPanel.receiveFromLocations])];
         const panelMissions = getMissionsForPanel(
           userId,
+          originAreas,
           storedPanel.sendToLocations,
           storedPanel.receiveFromLocations
         );
@@ -62,12 +86,14 @@ export function MissionsDashboard() {
         // Panel doesn't exist - clear state
         setPanelSendTo([]);
         setPanelReceiveFrom([]);
+        setPanelSelectedAreas([]);
         setMissions([]);
       }
     } else {
       // No userId selected - clear state
       setPanelSendTo([]);
       setPanelReceiveFrom([]);
+      setPanelSelectedAreas([]);
       setMissions([]);
     }
   }, [userId]);
@@ -116,10 +142,20 @@ export function MissionsDashboard() {
       setUserId(nextPanel.userId);
       setPanelSendTo(nextPanel.sendToLocations);
       setPanelReceiveFrom(nextPanel.receiveFromLocations);
+      setPanelSelectedAreas(
+        nextPanel.selectedAreas && nextPanel.selectedAreas.length > 0
+          ? nextPanel.selectedAreas
+          : [...new Set([...nextPanel.sendToLocations, ...nextPanel.receiveFromLocations])]
+      );
       setFilter('Pending');
       // Filter missions for the selected panel
+      const originAreas =
+        nextPanel.selectedAreas && nextPanel.selectedAreas.length > 0
+          ? nextPanel.selectedAreas
+          : [...new Set([...nextPanel.sendToLocations, ...nextPanel.receiveFromLocations])];
       const panelMissions = getMissionsForPanel(
         nextPanel.userId,
+        originAreas,
         nextPanel.sendToLocations,
         nextPanel.receiveFromLocations
       );
@@ -131,6 +167,7 @@ export function MissionsDashboard() {
       setUserId(null);
       setPanelSendTo([]);
       setPanelReceiveFrom([]);
+      setPanelSelectedAreas([]);
       setMissions([]);
       setIsAdminActionsModalOpen(false);
     }
@@ -156,9 +193,10 @@ export function MissionsDashboard() {
     // Update local state
     setPanelSendTo(sendTo);
     setPanelReceiveFrom(receiveFrom);
+    setPanelSelectedAreas(selectedAreas);
 
     // Reload missions for the updated panel
-    const panelMissions = getMissionsForPanel(userId, sendTo, receiveFrom);
+    const panelMissions = getMissionsForPanel(userId, selectedAreas, sendTo, receiveFrom);
     setMissions(panelMissions);
 
     setIsEditPanelModalOpen(false);
@@ -170,13 +208,24 @@ export function MissionsDashboard() {
     setIsChangePanelModalOpen(true);
   };
 
-  const handleSelectPanel = (selectedUserId: string, sendTo: string[], receiveFrom: string[]) => {
+  const handleSelectPanel = (
+    selectedUserId: string,
+    originAreas: string[],
+    sendTo: string[],
+    receiveFrom: string[]
+  ) => {
     setUserId(selectedUserId);
     setPanelSendTo(sendTo);
     setPanelReceiveFrom(receiveFrom);
+    setPanelSelectedAreas(originAreas.length > 0 ? originAreas : [...new Set([...sendTo, ...receiveFrom])]);
     setFilter('Pending');
     // Filter missions for the selected panel
-    const panelMissions = getMissionsForPanel(selectedUserId, sendTo, receiveFrom);
+    const panelMissions = getMissionsForPanel(
+      selectedUserId,
+      originAreas.length > 0 ? originAreas : [...new Set([...sendTo, ...receiveFrom])],
+      sendTo,
+      receiveFrom
+    );
     setMissions(panelMissions);
   };
 
@@ -207,9 +256,10 @@ export function MissionsDashboard() {
     setUserId(newUserId);
     setPanelSendTo(sendTo);
     setPanelReceiveFrom(receiveFrom);
+    setPanelSelectedAreas(selectedAreas);
     setFilter('Pending');
     // Filter missions for the new panel
-    const panelMissions = getMissionsForPanel(newUserId, sendTo, receiveFrom);
+    const panelMissions = getMissionsForPanel(newUserId, selectedAreas, sendTo, receiveFrom);
     setMissions(panelMissions);
     setIsEditPanelModalOpen(false);
   };
@@ -248,7 +298,7 @@ export function MissionsDashboard() {
     saveMission(newMission);
 
     // Reload missions filtered for current panel
-    const panelMissions = getMissionsForPanel(userId, panelSendTo, panelReceiveFrom);
+    const panelMissions = getMissionsForPanel(userId, panelSelectedAreas, panelSendTo, panelReceiveFrom);
     setMissions(panelMissions);
     
     // Ensure filter is set to 'Pending' to show the newly created mission
@@ -262,7 +312,7 @@ export function MissionsDashboard() {
     // Delete from global storage
     deleteMission(id);
     // Reload missions filtered for current panel
-    const panelMissions = getMissionsForPanel(userId, panelSendTo, panelReceiveFrom);
+    const panelMissions = getMissionsForPanel(userId, panelSelectedAreas, panelSendTo, panelReceiveFrom);
     setMissions(panelMissions);
   };
 
@@ -274,17 +324,36 @@ export function MissionsDashboard() {
         const assignedRobot = ROBOT_NAMES[Math.floor(Math.random() * ROBOT_NAMES.length)];
         const assignedStartPoint = panelReceiveFrom[Math.floor(Math.random() * panelReceiveFrom.length)];
         
-        // Select destination from panel's "Send To" areas (step 3 of edit modal)
-        const selectedDestination = panelSendTo.length > 0 
-          ? panelSendTo[Math.floor(Math.random() * panelSendTo.length)]
-          : null;
+        // For Receive missions shown as Send, preserve the original startPoint (where origin panel wants to receive from)
+        // and set destination to the origin panel's selected area (where they want to receive to)
+        const isReceiveMission = mission.type === 'Receive';
+        const originalStartPoint = mission.startPoint; // Preserve original startPoint for Receive missions
+        
+        // Get origin panel's selected areas to determine where they want to receive to
+        let originDestination = null;
+        if (isReceiveMission && mission.createdByPanelId) {
+          const originPanel = getPanelByUserId(mission.createdByPanelId);
+          if (originPanel?.selectedAreas && originPanel.selectedAreas.length > 0) {
+            originDestination = `Point ${originPanel.selectedAreas[0]}`;
+          }
+        }
+        
+        // Select destination from panel's "Send To" areas (step 3 of edit modal) - only for Send missions
+        // For Receive missions, use origin panel's selected area as destination
+        const selectedDestination = isReceiveMission 
+          ? originDestination
+          : (panelSendTo.length > 0 
+              ? panelSendTo[Math.floor(Math.random() * panelSendTo.length)]
+              : null);
         
         const updated = {
           ...mission,
           status: 'In queue' as MissionStatus,
           robotName: assignedRobot,
-          startPoint: `Point ${assignedStartPoint}`,
-          destination: selectedDestination ? `Point ${selectedDestination}` : mission.destination || mission.startPoint,
+          // For Receive missions, preserve original startPoint (where origin wants to receive from)
+          // For Send missions, use the assigned start point (where this panel is sending from)
+          startPoint: isReceiveMission ? originalStartPoint : `Point ${assignedStartPoint}`,
+          destination: selectedDestination ? `Point ${selectedDestination}` : (isReceiveMission ? originDestination : (mission.destination || mission.startPoint)),
           assignedToPanelId: userId,
         };
         saveMission(updated);
@@ -295,7 +364,7 @@ export function MissionsDashboard() {
     saveMissions(updatedMissions);
 
     // Reload missions filtered for current panel
-    const panelMissions = getMissionsForPanel(userId, panelSendTo, panelReceiveFrom);
+    const panelMissions = getMissionsForPanel(userId, panelSelectedAreas, panelSendTo, panelReceiveFrom);
     setMissions(panelMissions);
   };
 
@@ -327,7 +396,7 @@ export function MissionsDashboard() {
     saveMissions(updatedMissions);
 
     // Reload missions filtered for current panel
-    const panelMissions = getMissionsForPanel(userId, panelSendTo, panelReceiveFrom);
+    const panelMissions = getMissionsForPanel(userId, panelSelectedAreas, panelSendTo, panelReceiveFrom);
     setMissions(panelMissions);
   };
 
@@ -347,7 +416,7 @@ export function MissionsDashboard() {
         
         // Reload missions for current panel
         if (userId) {
-          const panelMissions = getMissionsForPanel(userId, panelSendTo, panelReceiveFrom);
+          const panelMissions = getMissionsForPanel(userId, panelSelectedAreas, panelSendTo, panelReceiveFrom);
           setMissions(panelMissions);
         }
       }, 5000);
@@ -362,7 +431,7 @@ export function MissionsDashboard() {
         
         // Reload missions for current panel
         if (userId) {
-          const panelMissions = getMissionsForPanel(userId, panelSendTo, panelReceiveFrom);
+          const panelMissions = getMissionsForPanel(userId, panelSelectedAreas, panelSendTo, panelReceiveFrom);
           setMissions(panelMissions);
         }
       }, 10000);
@@ -455,7 +524,7 @@ export function MissionsDashboard() {
         onCreateMission={handleCreateMission}
         sendToLocations={panelSendTo}
         receiveFromLocations={panelReceiveFrom}
-        selectedAreas={[...new Set([...panelSendTo, ...panelReceiveFrom])]}
+        selectedAreas={panelSelectedAreas}
       />
 
       <AdminPasswordModal

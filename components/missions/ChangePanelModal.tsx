@@ -8,7 +8,7 @@ interface ChangePanelModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUserId: string;
-  onSelectPanel: (userId: string, sendTo: string[], receiveFrom: string[]) => void;
+  onSelectPanel: (userId: string, selectedAreas: string[], sendTo: string[], receiveFrom: string[]) => void;
   onOpenCreatePanel: () => void;
 }
 
@@ -32,7 +32,12 @@ export function ChangePanelModal({
   }
 
   const handleSelectPanel = (panel: StoredPanel) => {
-    onSelectPanel(panel.userId, panel.sendToLocations, panel.receiveFromLocations);
+    onSelectPanel(
+      panel.userId,
+      panel.selectedAreas || [],
+      panel.sendToLocations,
+      panel.receiveFromLocations
+    );
     onClose();
   };
 
