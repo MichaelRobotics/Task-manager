@@ -4,12 +4,16 @@ import { FilterButton } from './FilterButton';
 import { MobileFilterButton } from './MobileFilterButton';
 import type { MissionStatus } from '@/types/missions';
 
+type Language = 'en' | 'pl' | 'uk';
+
 interface HeaderProps {
   filter: MissionStatus;
   setFilter: (filter: MissionStatus) => void;
   onOpenAddMissionModal: () => void;
   onOpenAdminModal: () => void;
   userId: string;
+  language: Language;
+  setLanguage: (language: Language) => void;
 }
 
 const filterOrder: MissionStatus[] = ['Pending', 'Active', 'Completed'];
@@ -19,12 +23,21 @@ export function Header({
   setFilter, 
   onOpenAddMissionModal, 
   onOpenAdminModal, 
-  userId 
+  userId,
+  language,
+  setLanguage
 }: HeaderProps) {
   const handleCycleFilter = () => {
     const currentIndex = filterOrder.indexOf(filter);
     const nextIndex = (currentIndex + 1) % filterOrder.length;
     setFilter(filterOrder[nextIndex]);
+  };
+
+  const handleLanguageChange = (lang: Language) => {
+    setLanguage(lang);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('selected_language', lang);
+    }
   };
 
   return (
@@ -65,7 +78,7 @@ export function Header({
           <span className="text-xs sm:text-sm font-medium text-gray-600">Panel ID: {userId}</span>
         </div>
 
-        {/* Right Side: Settings Button Only (Add Mission moved to floating button on mobile) */}
+        {/* Right Side: Add Mission, Language Flags, Settings */}
         <div className="flex items-center gap-3">
           {/* Add Mission Button - Hidden on mobile (shown as floating button) */}
           <button
@@ -77,6 +90,44 @@ export function Header({
             </svg>
             Add Mission
           </button>
+          
+          {/* Language Flags - Next to Add Mission */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => handleLanguageChange('en')}
+              className={`text-xl sm:text-2xl transition-all cursor-pointer ${
+                language === 'en' 
+                  ? 'opacity-100 scale-110' 
+                  : 'opacity-50 hover:opacity-75 hover:scale-105'
+              }`}
+              title="English"
+            >
+              🇬🇧
+            </button>
+            <button
+              onClick={() => handleLanguageChange('pl')}
+              className={`text-xl sm:text-2xl transition-all cursor-pointer ${
+                language === 'pl' 
+                  ? 'opacity-100 scale-110' 
+                  : 'opacity-50 hover:opacity-75 hover:scale-105'
+              }`}
+              title="Polish"
+            >
+              🇵🇱
+            </button>
+            <button
+              onClick={() => handleLanguageChange('uk')}
+              className={`text-xl sm:text-2xl transition-all cursor-pointer ${
+                language === 'uk' 
+                  ? 'opacity-100 scale-110' 
+                  : 'opacity-50 hover:opacity-75 hover:scale-105'
+              }`}
+              title="Ukrainian"
+            >
+              🇺🇦
+            </button>
+          </div>
+
           {/* Settings Button - Always visible */}
           <button
             onClick={onOpenAdminModal}

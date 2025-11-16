@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useLayoutEffect } from 'react';
+import { useState, useLayoutEffect, useEffect } from 'react';
 import type { MissionType } from '@/types/missions';
 import { ALL_LOCATIONS } from '@/lib/mockData';
 import { getAllPanels } from '@/lib/panelStorage';
@@ -74,7 +74,7 @@ export function AddMissionModal({
 }: AddMissionModalProps) {
   const [selectedType, setSelectedType] = useState<MissionType | null>(null);
   const [cargoType, setCargoType] = useState<string>('');
-  const [numberOfPieces, setNumberOfPieces] = useState<string>('');
+  const [numberOfPieces, setNumberOfPieces] = useState<string>('1');
   const [selectedArea, setSelectedArea] = useState<string>('');
   const [availableCargoTypes, setAvailableCargoTypes] = useState<string[]>([]);
   const [locationLabelAssignments, setLocationLabelAssignments] = useState<Record<string, LabelAssignment[]>>({});
@@ -95,11 +95,43 @@ export function AddMissionModal({
       setLocationNames(names);
       setSelectedType(null);
       setCargoType('');
-      setNumberOfPieces('');
+      setNumberOfPieces('1');
       setSelectedArea('');
       setAreaWarning(null);
     }
   }, [isOpen, selectedAreas]);
+
+  // Auto-select cargo type if there's only one available
+  useEffect(() => {
+    if (selectedType && !cargoType && selectedAreas.length > 0) {
+      // Collect all cargo types that origin areas can handle for this mission type
+      const validCargoTypes = new Set<string>();
+      
+      selectedAreas.forEach(area => {
+        const assignments = locationLabelAssignments[area] || [];
+        assignments.forEach(assignment => {
+          if (selectedType === 'Send') {
+            // For SEND: only include cargo types that origin area can send
+            if (assignment.type === 'send' || assignment.type === 'both') {
+              validCargoTypes.add(assignment.label);
+            }
+          } else if (selectedType === 'Receive') {
+            // For RECEIVE: only include cargo types that origin area can receive
+            if (assignment.type === 'receive' || assignment.type === 'both') {
+              validCargoTypes.add(assignment.label);
+            }
+          }
+        });
+      });
+      
+      const availableTypes = Array.from(validCargoTypes);
+      if (availableTypes.length === 1) {
+        setCargoType(availableTypes[0]);
+        setSelectedArea(''); // Reset area selection when cargo type is auto-selected
+        setAreaWarning(null); // Reset warning
+      }
+    }
+  }, [selectedType, locationLabelAssignments, selectedAreas, cargoType]);
 
   if (!isOpen) {
     return null;
@@ -346,7 +378,7 @@ export function AddMissionModal({
                             setSelectedArea(''); // Reset area selection when cargo type changes
                             setAreaWarning(null); // Reset warning when cargo type changes
                           }}
-                          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                          className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                             cargoType === type
                               ? 'bg-blue-600 text-white'
                               : 'bg-blue-100 text-blue-800 hover:bg-blue-200'

@@ -14,6 +14,20 @@ import { AdminActionsModal } from './AdminActionsModal';
 import { ChangePanelModal } from './ChangePanelModal';
 import { EditPanelModal } from './EditPanelModal';
 
+type Language = 'en' | 'pl' | 'uk';
+
+const LANGUAGE_STORAGE_KEY = 'selected_language';
+
+const getStoredLanguage = (): Language => {
+  if (typeof window === 'undefined') return 'en';
+  try {
+    const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    return (stored as Language) || 'en';
+  } catch {
+    return 'en';
+  }
+};
+
 export function MissionsDashboard() {
   const [missions, setMissions] = useState<PanelMission[]>([]);
   const [filter, setFilter] = useState<MissionStatus>('Pending');
@@ -26,6 +40,7 @@ export function MissionsDashboard() {
   const [isAdminActionsModalOpen, setIsAdminActionsModalOpen] = useState(false);
   const [isChangePanelModalOpen, setIsChangePanelModalOpen] = useState(false);
   const [isEditPanelModalOpen, setIsEditPanelModalOpen] = useState(false);
+  const [language, setLanguage] = useState<Language>(getStoredLanguage());
   const hasInitializedWithPanel = useRef(false);
 
   // On initial load, if panels already exist, default to the first one
@@ -532,10 +547,22 @@ export function MissionsDashboard() {
             onOpenAddMissionModal={handleOpenModal}
             onOpenAdminModal={handleOpenAdminModal}
             userId={userId}
+            language={language}
+            setLanguage={setLanguage}
           />
 
           <main className="container mx-auto p-4 md:p-6">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800 mb-4 px-2 sm:px-0">{getStatusDisplayText(filter)} Missions</h1>
+            <div className="flex items-center justify-between mb-4 px-2 sm:px-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">{getStatusDisplayText(filter)} Missions</h1>
+              
+              {filter === 'Pending' && (
+                <img 
+                  src="https://www.logo.wine/a/logo/KUKA/KUKA-Logo.wine.svg" 
+                  alt="KUKA Logo" 
+                  className="h-12 sm:h-16 md:h-20 w-auto"
+                />
+              )}
+            </div>
 
             {filteredMissions.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
