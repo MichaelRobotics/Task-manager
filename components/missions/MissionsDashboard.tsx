@@ -555,13 +555,11 @@ export function MissionsDashboard() {
             <div className="flex items-center justify-between mb-4 px-2 sm:px-0">
               <h1 className="text-xl sm:text-2xl font-bold text-gray-800">{getStatusDisplayText(filter)} Missions</h1>
               
-              {filter === 'Pending' && (
-                <img 
-                  src="https://www.logo.wine/a/logo/KUKA/KUKA-Logo.wine.svg" 
-                  alt="KUKA Logo" 
-                  className="h-12 sm:h-16 md:h-20 w-auto"
-                />
-              )}
+              <img 
+                src="https://www.logo.wine/a/logo/KUKA/KUKA-Logo.wine.svg" 
+                alt="KUKA Logo" 
+                className="h-12 sm:h-16 md:h-20 w-auto"
+              />
             </div>
 
             {filteredMissions.length > 0 ? (
